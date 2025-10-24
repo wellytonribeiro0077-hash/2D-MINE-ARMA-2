@@ -1,145 +1,99 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mini Standoff 2 2D</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+    <title>Mini F1 2D - Clone</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: #222;
-            font-family: Arial, sans-serif;
+        :root { --bg:#0b0b12; --track:#2b2b2f; --grass:#1a5a1a; --wall:#111; --ui:#ffffff; }
+        body { margin:0; background:var(--bg); color:var(--ui); font-family:Inter, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        #game-wrap { max-width: 1000px; margin: 8px auto; position:relative; }
+        canvas { display:block; width:100%; height:auto; background: linear-gradient(#041024, #061225); border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.7); }
+        .hud {
+            position:absolute; left:12px; top:12px; background:rgba(0,0,0,0.35); padding:8px 12px; border-radius:8px; font-size:14px;
         }
-        #game-container {
-            position: relative;
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
+        .hud.right { left:auto; right:12px; }
+        .joystick { 
+            position:absolute; bottom:22px; width:110px; height:110px; border-radius:50%; background:rgba(255,255,255,0.06); 
+            display:flex; align-items:center; justify-content:center; touch-action:manipulation; 
         }
-        canvas {
-            display: block;
-            background: #444;
-            width: 100%;
-            height: auto;
-            border: 2px solid #fff;
+        .joystick-inner { 
+            width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,0.18); transform:translate(0,0); transition:transform 0.02s, opacity 0.1s; 
         }
-        .joystick {
-            position: absolute;
-            bottom: 50px;
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
-            touch-action: manipulation;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .joystick.active .joystick-inner { opacity: 0.5; }
+        #left-stick { left:18px; }
+        #right-stick { right:18px; }
+        #startBtn, #pauseBtn, #resumeBtn {
+            position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); padding:14px 22px; font-size:18px; 
+            border-radius:10px; display:none; cursor:pointer; background:#444; color:#fff; border:none;
         }
-        .joystick-inner {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.5);
-            position: absolute;
-            transition: transform 0.1s, opacity 0.1s;
+        #pauseBtn { top:30px; right:20px; left:auto; transform:none; }
+        #resumeBtn { top:60%; }
+        .lap-display { font-weight:600; font-size:16px; }
+        .pause-screen { 
+            position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:30px; display:none; 
         }
-        .joystick.active .joystick-inner {
-            opacity: 0.8;
-        }
-        #joystick-left { left: 50px; }
-        #joystick-right { right: 50px; }
-        .game-over, .pause-screen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 40px;
-            color: red;
-            text-align: center;
-            display: none;
-        }
-        #respawnButton, #pauseButton, #resumeButton {
-            position: absolute;
-            padding: 15px 30px;
-            font-size: 20px;
-            cursor: pointer;
-            border: none;
-            border-radius: 8px;
-            background: #444;
-            color: #fff;
-        }
-        #respawnButton {
-            top: 60%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-        }
-        #pauseButton {
-            top: 30px;
-            right: 20px;
-        }
-        #resumeButton {
-            top: 60%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-        }
-        @media (min-width: 801px) {
-            .joystick {
-                display: none;
-            }
-        }
+        @media(min-width:900px) { .joystick { display:none; } }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <canvas id="gameCanvas" width="800" height="500"></canvas>
-        <div class="joystick" id="joystick-left"><div class="joystick-inner" id="left-inner"></div></div>
-        <div class="joystick" id="joystick-right"><div class="joystick-inner" id="right-inner"></div></div>
-        <div class="game-over" id="gameOverText">
-            Game Over<br>Pontos: <span id="finalScore">0</span>
+    <div id="game-wrap">
+        <canvas id="c" width="1000" height="600"></canvas>
+        <div class="hud" id="hud-left">
+            <div class="lap-display">Volta: <span id="lap">0</span>/<span id="lapsGoal">3</span></div>
+            <div>Health: <span id="health">100</span></div>
+            <div id="msg" style="opacity:0.9; margin-top:6px;">Use W/A/S/D ou setas - Mobile: joysticks</div>
         </div>
-        <div class="pause-screen" id="pauseText">
-            Pausado
+        <div class="hud right" id="hud-right">
+            <div>Velocidade: <span id="spd">0</span> km/h</div>
+            <div>Tempo: <span id="time">0.0</span>s</div>
+            <div>Melhor Volta: <span id="bestLap">--</span>s</div>
         </div>
-        <button id="pauseButton">Pausar</button>
-        <button id="respawnButton">Respawn</button>
-        <button id="resumeButton">Retomar</button>
+        <div id="left-stick" class="joystick"><div id="left-inner" class="joystick-inner"></div></div>
+        <div id="right-stick" class="joystick"><div id="right-inner" class="joystick-inner"></div></div>
+        <div class="pause-screen" id="pauseText">Pausado</div>
+        <button id="startBtn">Restart</button>
+        <button id="pauseBtn">Pausar</button>
+        <button id="resumeBtn">Retomar</button>
     </div>
     <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
 
-        // High-DPI scaling
-        const scale = window.devicePixelRatio;
-        canvas.style.width = "800px";
-        canvas.style.height = "500px";
-        canvas.width = 800 * scale;
-        canvas.height = 500 * scale;
-        ctx.scale(scale, scale);
+        // HUD refs
+        const lapEl = document.getElementById('lap');
+        const lapsGoalEl = document.getElementById('lapsGoal');
+        const spdEl = document.getElementById('spd');
+        const timeEl = document.getElementById('time');
+        const healthEl = document.getElementById('health');
+        const bestLapEl = document.getElementById('bestLap');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const msg = document.getElementById('msg');
+        const pauseText = document.getElementById('pauseText');
 
-        let player = { x: 400, y: 250, angle: 0, health: 100, speed: 3, lastShot: 0, lives: 3 };
-        let bullets = [];
-        let enemyBullets = [];
-        let enemies = [
-            { x: 100, y: 100, speed: 1, health: 50, type: 'melee' },
-            { x: 700, y: 400, speed: 1, health: 50, type: 'melee' }
-        ];
-        let walls = [
-            { x: 200, y: 200, width: 100, height: 20, health: 50 },
-            { x: 500, y: 300, width: 20, height: 100, health: 50 }
-        ];
-        let powerUps = [];
-        let score = 0;
-        let gameRunning = true;
+        let lastTime = performance.now();
+        let running = true;
         let paused = false;
-        let lastTime = 0;
-        let lastSpawn = Date.now();
+        let totalTime = 0;
+        let gameStartTime = performance.now();
 
-        let move = { x: 0, y: 0 };
-        let shoot = { x: 0, y: 0 };
-        const keys = { w: false, s: false, a: false, d: false, up: false, down: false, left: false, right: false };
+        // Track definition
+        const outer = [
+            {x:100,y:80},{x:900,y:80},{x:980,y:200},{x:980,y:400},{x:900,y:520},{x:100,y:520},{x:20,y:400},{x:20,y:200}
+        ];
+        const inner = [
+            {x:220,y:180},{x:780,y:180},{x:860,y:300},{x:780,y:420},{x:220,y:420},{x:140,y:300}
+        ];
+        const startLine = { x1: 500, y1: 72, x2: 500, y2: 130 };
+        const waypoints = [
+            {x:500,y:120},{x:760,y:180},{x:880,y:300},{x:760,y:420},{x:500,y:480},{x:240,y:420},{x:120,y:300},{x:240,y:180}
+        ];
+
+        // Power-ups
+        let powerUps = [];
 
         // Sound effects
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -151,96 +105,310 @@
             oscillator.start();
             setTimeout(() => oscillator.stop(), duration);
         }
-        function playShootSound() { playSound(800, 50); }
-        function playEnemyShootSound() { playSound(600, 50); }
-        function playHitSound() { playSound(400, 100); }
+        function playEngineSound() { playSound(300, 100); }
+        function playCollisionSound() { playSound(200, 150); }
         function playPowerUpSound() { playSound(1000, 100); setTimeout(() => playSound(1200, 100), 100); }
-        function playGameOverSound() { playSound(200, 200); }
-        function playWallBreakSound() { playSound(300, 150); }
+        function playFinishSound() { playSound(800, 200); setTimeout(() => playSound(1000, 200), 200); }
 
-        function drawPlayer() {
-            ctx.save();
-            ctx.translate(player.x, player.y);
-            ctx.rotate(player.angle);
-            ctx.fillStyle = "#00FF00"; // Green body
-            ctx.fillRect(-15, -10, 30, 20);
-            ctx.fillStyle = "#FFD700"; // Yellow head
-            ctx.beginPath();
-            ctx.arc(10, 0, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#000"; // Eyes
-            ctx.beginPath();
-            ctx.arc(8, -4, 2, 0, Math.PI * 2);
-            ctx.arc(8, 4, 2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#888"; // Gun
-            ctx.fillRect(15, -2, 10, 4);
-            ctx.restore();
-            // Health bar
-            ctx.fillStyle = "#FF0000";
-            ctx.fillRect(player.x - 20, player.y - 20, 40, 5);
-            ctx.fillStyle = "#00FF00";
-            ctx.fillRect(player.x - 20, player.y - 20, 40 * (player.health / 100), 5);
-            // Lives
-            ctx.fillStyle = "#FFF";
-            ctx.font = "16px Arial";
-            ctx.fillText(`Vidas: ${player.lives}`, player.x - 20, player.y - 30);
+        // Utility functions
+        function dist(a, b) { const dx = a.x - b.x, dy = a.y - b.y; return Math.sqrt(dx * dx + dy * dy); }
+        function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+        function pointInPolygon(point, vs) {
+            let x = point.x, y = point.y;
+            let inside = false;
+            for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                let xi = vs[i].x, yi = vs[i].y;
+                let xj = vs[j].x, yj = vs[j].y;
+                let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
         }
 
-        function drawBullets() {
-            bullets.forEach(b => {
-                ctx.fillStyle = "#FF0000";
-                ctx.fillRect(b.x - 5, b.y - 5, 10, 10);
-                ctx.strokeStyle = "#FFF";
-                ctx.lineWidth = 1;
-                ctx.strokeRect(b.x - 5, b.y - 5, 10, 10);
-                // Explosion effect
-                if (b.hit) {
+        // Car class
+        class Car {
+            constructor(x, y, angle = -Math.PI / 2, color = "#ff4b4b", isPlayer = false) {
+                this.x = x; this.y = y; this.angle = angle;
+                this.v = 0; this.steer = 0;
+                this.w = 18; this.h = 36;
+                this.color = color;
+                this.maxSpeed = isPlayer ? 6.2 : 5.6 + Math.random() * 0.4;
+                this.accel = 0.14;
+                this.brakeDecel = 0.28;
+                this.friction = 0.02;
+                this.turnSpeed = 0.035;
+                this.lap = 0;
+                this.crossedLast = false;
+                this.bestLap = null;
+                this.finished = false;
+                this.health = isPlayer ? 100 : 50;
+                this.isPlayer = isPlayer;
+                this.exhaustTimer = 0;
+            }
+
+            update(input, dt) {
+                if (input.throttle > 0) {
+                    this.v += this.accel * input.throttle * dt;
+                    if (this.isPlayer && Math.random() < 0.1) playEngineSound();
+                } else {
+                    this.v += this.brakeDecel * input.throttle * dt;
+                }
+                if (input.throttle === 0) {
+                    if (this.v > 0) this.v -= this.friction * dt;
+                    else if (this.v < 0) this.v += this.friction * dt;
+                }
+                this.v = clamp(this.v, -2.0, this.maxSpeed);
+                const steerEffect = this.turnSpeed * (1 - Math.exp(-Math.abs(this.v) / 1.5));
+                this.angle += input.steer * steerEffect * dt * (this.v >= 0 ? 1 : -1);
+                let nextX = this.x + Math.cos(this.angle) * this.v * dt;
+                let nextY = this.y + Math.sin(this.angle) * this.v * dt;
+                const p = { x: nextX, y: nextY };
+                const insideOuter = pointInPolygon(p, outer);
+                const insideInner = pointInPolygon(p, inner);
+                if (!insideOuter || insideInner) {
+                    this.v *= 0.95;
+                    this.health -= this.isPlayer ? 0.5 * dt : 0;
+                    const cx = 500, cy = 300;
+                    const dx = cx - this.x, dy = cy - this.y;
+                    this.x += dx * 0.002 * dt;
+                    this.y += dy * 0.002 * dt;
+                } else {
+                    this.x = nextX;
+                    this.y = nextY;
+                }
+                this.exhaustTimer += dt;
+            }
+
+            _onStartLine() {
+                const px = this.x, py = this.y;
+                const x1 = startLine.x1, y1 = startLine.y1, x2 = startLine.x2, y2 = startLine.y2;
+                const A = px - x1, B = py - y1;
+                const C = x2 - x1, D = y2 - y1;
+                const dot = A * C + B * D;
+                const lenSq = C * C + D * D;
+                const param = lenSq !== 0 ? dot / lenSq : -1;
+                let xx, yy;
+                if (param < 0) { xx = x1; yy = y1; }
+                else if (param > 1) { xx = x2; yy = y2; }
+                else { xx = x1 + param * C; yy = y1 + param * D; }
+                const dx = px - xx, dy = py - yy;
+                return Math.sqrt(dx * dx + dy * dy) < 18;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(-this.w / 2, -this.h / 2);
+                ctx.lineTo(this.w / 2, -this.h / 2);
+                ctx.lineTo(this.w / 2, this.h / 2);
+                ctx.lineTo(-this.w / 2, this.h / 2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = "#111";
+                ctx.fillRect(-6, -this.h / 2 + 6, 12, this.h / 3);
+                ctx.fillStyle = "#000";
+                ctx.fillRect(-this.w / 2 - 3, -this.h / 3, 4, 8);
+                ctx.fillRect(this.w / 2 - 1, -this.h / 3, 4, 8);
+                ctx.fillRect(-this.w / 2 - 3, this.h / 6, 4, 8);
+                ctx.fillRect(this.w / 2 - 1, this.h / 6, 4, 8);
+                if (this.exhaustTimer % 2 > 1 && this.v > 0) {
                     ctx.fillStyle = "rgba(255, 165, 0, 0.5)";
                     ctx.beginPath();
-                    ctx.arc(b.x, b.y, 10, 0, Math.PI * 2);
+                    ctx.moveTo(-this.w / 2, this.h / 2);
+                    ctx.lineTo(-this.w / 2 - 10, this.h / 2 + 5);
+                    ctx.lineTo(-this.w / 2 - 10, this.h / 2 - 5);
                     ctx.fill();
                 }
-            });
-            enemyBullets.forEach(b => {
-                ctx.fillStyle = "#FF4500";
-                ctx.fillRect(b.x - 5, b.y - 5, 10, 10);
-                ctx.strokeStyle = "#FFF";
-                ctx.lineWidth = 1;
-                ctx.strokeRect(b.x - 5, b.y - 5, 10, 10);
-            });
+                ctx.restore();
+                if (this.isPlayer) {
+                    ctx.fillStyle = "#FF0000";
+                    ctx.fillRect(this.x - 20, this.y - 25, 40, 5);
+                    ctx.fillStyle = "#00FF00";
+                    ctx.fillRect(this.x - 20, this.y - 25, 40 * (this.health / 100), 5);
+                }
+            }
         }
 
-        function drawEnemies() {
-            enemies.forEach(e => {
-                ctx.fillStyle = e.type === 'melee' ? "#800080" : "#FF0000";
-                ctx.fillRect(e.x - 15, e.y - 15, 30, 30);
-                ctx.fillStyle = "#000";
-                ctx.beginPath();
-                ctx.arc(e.x - 5, e.y - 5, 3, 0, Math.PI * 2);
-                ctx.arc(e.x + 5, e.y - 5, 3, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = "#FF0000";
-                ctx.fillRect(e.x - 15, e.y - 25, 30, 5);
-                ctx.fillStyle = "#00FF00";
-                ctx.fillRect(e.x - 15, e.y - 25, 30 * (e.health / (e.type === 'melee' ? 50 : 30)), 5);
+        // Game objects
+        let player = new Car(500, 150, Math.PI / 2, "#4bd3ff", true);
+        let aiCars = [
+            new Car(520, 140, Math.PI / 2, "#ffb84b"),
+            new Car(540, 130, Math.PI / 2, "#ff4b4b"),
+            new Car(560, 120, Math.PI / 2, "#00ff00")
+        ];
+        let aiWaypointIndices = [0, 0, 0];
+        const lapsGoal = 3;
+        lapsGoalEl.textContent = lapsGoal;
+        let playerLastCrossTime = null;
+        let playerStartLapTime = performance.now();
+
+        // Input
+        const input = { throttle: 0, steer: 0 };
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            if (["ArrowUp", "w", "W"].includes(e.key)) keys.up = true;
+            if (["ArrowDown", "s", "S"].includes(e.key)) keys.down = true;
+            if (["ArrowLeft", "a", "A"].includes(e.key)) keys.left = true;
+            if (["ArrowRight", "d", "D"].includes(e.key)) keys.right = true;
+        });
+        window.addEventListener('keyup', e => {
+            if (["ArrowUp", "w", "W"].includes(e.key)) keys.up = false;
+            if (["ArrowDown", "s", "S"].includes(e.key)) keys.down = false;
+            if (["ArrowLeft", "a", "A"].includes(e.key)) keys.left = false;
+            if (["ArrowRight", "d", "D"].includes(e.key)) keys.right = false;
+        });
+
+        // Joystick handling
+        function setupStick(stickId, innerId, callback) {
+            const stick = document.getElementById(stickId);
+            const inner = document.getElementById(innerId);
+            let active = false;
+            let rect = stick.getBoundingClientRect();
+            let center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+            function updateCenter() { rect = stick.getBoundingClientRect(); center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }; }
+            window.addEventListener('resize', updateCenter);
+            stick.addEventListener('touchstart', e => { e.preventDefault(); active = true; updateCenter(); stick.classList.add('active'); });
+            stick.addEventListener('touchend', e => { e.preventDefault(); active = false; inner.style.transform = 'translate(0px,0px)'; callback({ x: 0, y: 0 }); stick.classList.remove('active'); });
+            stick.addEventListener('touchmove', e => {
+                if (!active) return;
+                e.preventDefault();
+                const t = e.touches[0];
+                let dx = t.clientX - center.x;
+                let dy = t.clientY - center.y;
+                const max = 40;
+                const mag = Math.sqrt(dx * dx + dy * dy);
+                if (mag > max) { dx = dx / mag * max; dy = dy / mag * max; }
+                inner.style.transform = `translate(${dx}px, ${dy}px)`;
+                callback({ x: dx / max, y: dy / max });
             });
         }
+        setupStick('left-stick', 'left-inner', v => { input.steer = v.x; input.throttle = -v.y; });
+        setupStick('right-stick', 'right-inner', v => { input.throttle = -v.y; });
 
-        function drawWalls() {
-            walls.forEach(w => {
-                if (w.health <= 0) return;
-                ctx.fillStyle = "#808080";
-                ctx.fillRect(w.x, w.y, w.width, w.height);
-                ctx.strokeStyle = "#FFF";
-                ctx.lineWidth = 2;
-                ctx.strokeRect(w.x, w.y, w.width, w.height);
+        // AI handling
+        function updateAI(aiCar, index, dt) {
+            const target = waypoints[aiWaypointIndices[index]];
+            const dx = target.x - aiCar.x, dy = target.y - aiCar.y;
+            const angTo = Math.atan2(dy, dx);
+            let diff = angTo - aiCar.angle;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            const steer = clamp(diff * 2.0, -1, 1);
+            const throttle = clamp(1 - Math.abs(diff) * 1.8, -1, 1);
+            aiCar.update({ throttle: throttle, steer: steer }, dt);
+            if (Math.sqrt(dx * dx + dy * dy) < 28) {
+                aiWaypointIndices[index] = (aiWaypointIndices[index] + 1) % waypoints.length;
+            }
+        }
+
+        // Collision detection
+        function checkCollisions(dt) {
+            const cars = [player, ...aiCars];
+            for (let i = 0; i < cars.length; i++) {
+                for (let j = i + 1; j < cars.length; j++) {
+                    const car1 = cars[i], car2 = cars[j];
+                    if (Math.hypot(car1.x - car2.x, car1.y - car2.y) < car1.w + car2.w) {
+                        const dx = car2.x - car1.x, dy = car2.y - car1.y;
+                        const mag = Math.sqrt(dx * dx + dy * dy);
+                        if (mag > 0) {
+                            const push = 0.1 * dt;
+                            car1.x -= (dx / mag) * push;
+                            car1.y -= (dy / mag) * push;
+                            car2.x += (dx / mag) * push;
+                            car2.y += (dy / mag) * push;
+                            car1.angle += 0.1 * dt;
+                            car2.angle -= 0.1 * dt;
+                            car1.v *= 0.9;
+                            car2.v *= 0.9;
+                            if (car1.isPlayer) car1.health -= 1 * dt;
+                            if (car2.isPlayer) car2.health -= 1 * dt;
+                            playCollisionSound();
+                        }
+                    }
+                }
+            }
+        }
+
+        // Power-ups
+        function updatePowerUps(dt) {
+            powerUps.forEach((p, i) => {
+                if (Math.hypot(player.x - p.x, player.y - p.y) < 20) {
+                    if (p.type === 'speed') {
+                        player.maxSpeed = 8.0;
+                        setTimeout(() => player.maxSpeed = 6.2, 5000);
+                    } else {
+                        player.health = Math.min(100, player.health + 50);
+                    }
+                    powerUps.splice(i, 1);
+                    playPowerUpSound();
+                }
             });
+            if (Math.random() < 0.002 * dt) {
+                const p = waypoints[Math.floor(Math.random() * waypoints.length)];
+                powerUps.push({ x: p.x, y: p.y, type: Math.random() < 0.5 ? 'speed' : 'health' });
+            }
+        }
+
+        // Draw functions
+        function drawTrack(ctx) {
+            ctx.fillStyle = "#0b3b0b";
+            ctx.fillRect(0, 0, W, H);
+            ctx.beginPath();
+            outer.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+            ctx.closePath();
+            ctx.fillStyle = "#2c2c2f";
+            ctx.fill();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            inner.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.strokeStyle = "#222";
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            outer.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+            ctx.closePath();
+            ctx.stroke();
+            ctx.strokeStyle = "#222";
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            inner.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+            ctx.closePath();
+            ctx.stroke();
+            ctx.fillStyle = "white";
+            ctx.fillRect(startLine.x1 - 20, startLine.y1, 40, startLine.y2 - startLine.y1);
+            ctx.fillStyle = "black";
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if ((i + j) % 2 === 0) {
+                        ctx.fillRect(startLine.x1 - 20 + i * 8, startLine.y1 + j * 20, 8, 20);
+                    }
+                }
+            }
+            ctx.setLineDash([8, 10]);
+            ctx.strokeStyle = "rgba(255,255,255,0.06)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < waypoints.length; i++) {
+                const p = waypoints[i], q = waypoints[(i + 1) % waypoints.length];
+                ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+            if (Math.random() < 0.1) {
+                ctx.fillStyle = "rgba(255,255,255,0.1)";
+                const p = waypoints[Math.floor(Math.random() * waypoints.length)];
+                ctx.fillRect(p.x - 5, p.y - 5, 10, 10);
+            }
         }
 
         function drawPowerUps() {
             powerUps.forEach(p => {
-                ctx.fillStyle = p.type === 'health' ? "#00FF00" : "#FFFF00";
+                ctx.fillStyle = p.type === 'speed' ? "#FFFF00" : "#00FF00";
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
                 ctx.fill();
@@ -250,258 +418,7 @@
             });
         }
 
-        function drawScore() {
-            ctx.font = "20px Arial";
-            ctx.fillStyle = "#FFF";
-            ctx.fillText(`Pontos: ${score}`, 10, 30);
-        }
-
-        function update(deltaTime) {
-            if (paused) return;
-
-            // Player movement
-            let moveSpeed = player.speed * deltaTime;
-            if (keys.a || keys.d || keys.w || keys.s) {
-                move.x = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-                move.y = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
-                const mag = Math.sqrt(move.x * move.x + move.y * move.y);
-                if (mag > 0) { move.x /= mag; move.y /= mag; }
-            }
-            let nextX = player.x + move.x * moveSpeed;
-            let nextY = player.y + move.y * moveSpeed;
-            let canMove = true;
-            walls.forEach(w => {
-                if (w.health <= 0) return;
-                if (nextX - 15 < w.x + w.width && nextX + 15 > w.x && nextY - 15 < w.y + w.height && nextY + 15 > w.y) {
-                    canMove = false;
-                }
-            });
-            if (canMove) {
-                player.x = Math.max(15, Math.min(canvas.width - 15, nextX));
-                player.y = Math.max(15, Math.min(canvas.height - 15, nextY));
-            }
-
-            // Player shooting
-            if (keys.left || keys.right || keys.up || keys.down) {
-                shoot.x = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-                shoot.y = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
-                const mag = Math.sqrt(shoot.x * shoot.x + shoot.y * shoot.y);
-                if (mag > 0) { shoot.x /= mag; shoot.y /= mag; }
-            }
-            if (shoot.x !== 0 || shoot.y !== 0) {
-                player.angle = Math.atan2(shoot.y, shoot.x);
-                if (!player.lastShot || Date.now() - player.lastShot > 300) {
-                    bullets.push({
-                        x: player.x + Math.cos(player.angle) * 15,
-                        y: player.y + Math.sin(player.angle) * 15,
-                        vx: Math.cos(player.angle) * 5,
-                        vy: Math.sin(player.angle) * 5,
-                        hit: false
-                    });
-                    player.lastShot = Date.now();
-                    playShootSound();
-                }
-            }
-
-            // Update bullets
-            bullets.forEach((b, i) => {
-                b.x += b.vx * deltaTime;
-                b.y += b.vy * deltaTime;
-                if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
-                    bullets.splice(i, 1);
-                    return;
-                }
-                walls.forEach((w, j) => {
-                    if (w.health <= 0) return;
-                    if (b.x - 5 < w.x + w.width && b.x + 5 > w.x && b.y - 5 < w.y + w.height && b.y + 5 > w.y) {
-                        w.health -= 10;
-                        bullets.splice(i, 1);
-                        if (w.health <= 0) playWallBreakSound();
-                    }
-                });
-            });
-
-            // Update enemy bullets
-            enemyBullets.forEach((b, i) => {
-                b.x += b.vx * deltaTime;
-                b.y += b.vy * deltaTime;
-                if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
-                    enemyBullets.splice(i, 1);
-                    return;
-                }
-                walls.forEach((w, j) => {
-                    if (w.health <= 0) return;
-                    if (b.x - 5 < w.x + w.width && b.x + 5 > w.x && b.y - 5 < w.y + w.height && b.y + 5 > w.y) {
-                        w.health -= 10;
-                        enemyBullets.splice(i, 1);
-                        if (w.health <= 0) playWallBreakSound();
-                    }
-                });
-                if (Math.hypot(b.x - player.x, b.y - player.y) < 20) {
-                    player.health -= 5;
-                    enemyBullets.splice(i, 1);
-                    if (player.health <= 0) gameOver();
-                }
-            });
-
-            // Update enemies
-            enemies.forEach((e, i) => {
-                const dx = player.x - e.x;
-                const dy = player.y - e.y;
-                const mag = Math.sqrt(dx * dx + dy * dy);
-                if (e.type === 'melee' && mag > 0) {
-                    let canMove = true;
-                    const nextX = e.x + (dx / mag) * e.speed * deltaTime;
-                    const nextY = e.y + (dy / mag) * e.speed * deltaTime;
-                    walls.forEach(w => {
-                        if (w.health <= 0) return;
-                        if (nextX - 15 < w.x + w.width && nextX + 15 > w.x && nextY - 15 < w.y + w.height && nextY + 15 > w.y) {
-                            canMove = false;
-                        }
-                    });
-                    if (canMove) {
-                        e.x = nextX;
-                        e.y = nextY;
-                    }
-                    if (Math.hypot(player.x - e.x, player.y - e.y) < 30) {
-                        player.health -= 10 * deltaTime;
-                        if (player.health <= 0) gameOver();
-                    }
-                } else if (e.type === 'shooter' && mag > 50) {
-                    let canMove = true;
-                    const nextX = e.x + (dx / mag) * e.speed * deltaTime;
-                    const nextY = e.y + (dy / mag) * e.speed * deltaTime;
-                    walls.forEach(w => {
-                        if (w.health <= 0) return;
-                        if (nextX - 15 < w.x + w.width && nextX + 15 > w.x && nextY - 15 < w.y + w.height && nextY + 15 > w.y) {
-                            canMove = false;
-                        }
-                    });
-                    if (canMove) {
-                        e.x = nextX;
-                        e.y = nextY;
-                    }
-                }
-                if (e.type === 'shooter' && (!e.lastShot || Date.now() - e.lastShot > 1000)) {
-                    if (mag < 300) {
-                        enemyBullets.push({
-                            x: e.x,
-                            y: e.y,
-                            vx: (dx / mag) * 4,
-                            vy: (dy / mag) * 4
-                        });
-                        e.lastShot = Date.now();
-                        playEnemyShootSound();
-                    }
-                }
-                bullets.forEach((b, j) => {
-                    if (Math.hypot(b.x - e.x, b.y - e.y) < 20) {
-                        e.health -= 10;
-                        b.hit = true;
-                        setTimeout(() => bullets.splice(j, 1), 100);
-                        if (e.health <= 0) {
-                            enemies.splice(i, 1);
-                            score += e.type === 'melee' ? 100 : 150;
-                            playHitSound();
-                            if (Math.random() < 0.3) {
-                                powerUps.push({
-                                    x: e.x,
-                                    y: e.y,
-                                    type: Math.random() < 0.5 ? 'health' : 'speed'
-                                });
-                            }
-                        }
-                    }
-                });
-            });
-
-            // Update power-ups
-            powerUps.forEach((p, i) => {
-                if (Math.hypot(player.x - p.x, player.y - p.y) < 25) {
-                    if (p.type === 'health') {
-                        player.health = Math.min(100, player.health + 50);
-                    } else {
-                        player.speed = 4.5;
-                        setTimeout(() => player.speed = 3, 5000);
-                    }
-                    powerUps.splice(i, 1);
-                    playPowerUpSound();
-                }
-            });
-
-            // Spawn enemies
-            if (Date.now() - lastSpawn > 5000 && enemies.length < 5) {
-                const side = Math.floor(Math.random() * 4);
-                let x, y;
-                if (side === 0) { x = Math.random() * canvas.width; y = 0; }
-                else if (side === 1) { x = Math.random() * canvas.width; y = canvas.height; }
-                else if (side === 2) { x = 0; y = Math.random() * canvas.height; }
-                else { x = canvas.width; y = Math.random() * canvas.height; }
-                enemies.push({
-                    x, y, speed: Math.random() < 0.3 ? 0.8 : 1,
-                    health: Math.random() < 0.3 ? 30 : 50,
-                    type: Math.random() < 0.3 ? 'shooter' : 'melee',
-                    lastShot: 0
-                });
-                lastSpawn = Date.now();
-            }
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#444');
-            gradient.addColorStop(1, '#222');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            drawWalls();
-            drawPowerUps();
-            drawEnemies();
-            drawBullets();
-            drawPlayer();
-            drawScore();
-        }
-
-        function gameOver() {
-            player.lives -= 1;
-            if (player.lives <= 0) {
-                gameRunning = false;
-                document.getElementById('finalScore').textContent = score;
-                document.getElementById('gameOverText').style.display = 'block';
-                document.getElementById('respawnButton').style.display = 'none';
-                playGameOverSound();
-            } else {
-                player.health = 100;
-                player.x = 400;
-                player.y = 250;
-                bullets = [];
-                enemyBullets = [];
-                document.getElementById('gameOverText').style.display = 'block';
-                document.getElementById('finalScore').textContent = score;
-                document.getElementById('respawnButton').style.display = 'block';
-                gameRunning = false;
-                playGameOverSound();
-            }
-        }
-
-        document.getElementById('respawnButton').addEventListener('click', () => {
-            player.health = 100;
-            player.x = 400;
-            player.y = 250;
-            bullets = [];
-            enemyBullets = [];
-            enemies = [
-                { x: 100, y: 100, speed: 1, health: 50, type: 'melee' },
-                { x: 700, y: 400, speed: 1, health: 50, type: 'melee' }
-            ];
-            gameRunning = true;
-            document.getElementById('gameOverText').style.display = 'none';
-            document.getElementById('respawnButton').style.display = 'none';
-            requestAnimationFrame(gameLoop);
-        });
-
-        document.getElementById('pauseButton').addEventListener('click', () => {
-            paused = true;
-            document.getElementById('pauseText').style.display = 'block';
-            document.getElementById('resumeButton').style.display = 'block';
-            document.getElementById('pauseB
+        // Game loop
+        function step(now) {
+            if (!running || paused) return;
+          
