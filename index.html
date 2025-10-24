@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Esqueleto)</title>
+    <title>Mini Standoff 2 3D (Chão com Textura)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        /* Adicionar estilos para os joysticks 2D, pois 3D é mais complexo de controlar. */
+        /* Estilos dos Joysticks (mantidos) */
         .joystick {
             position: absolute;
             bottom: 50px;
@@ -19,7 +19,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 10; /* Para ficar sobre o canvas 3D */
+            z-index: 10;
         }
         .joystick-inner {
             width: 50px;
@@ -48,31 +48,38 @@
         let scene, camera, renderer;
         let playerMesh, enemyMesh;
         const container = document.getElementById('game-container');
-        let move = { x: 0, z: 0 }; // Usamos Z para frente/trás no 3D
+        let move = { x: 0, z: 0 };
         let shoot = { x: 0, z: 0 };
         const keys = { w: false, s: false, a: false, d: false, up: false, down: false, left: false, right: false };
         let playerSpeed = 0.05;
 
+        // URL da sua textura de grama.
+        // **SUBSTITUA ESTA URL PELA SUA IMAGEM HOSPEDADA:**
+        // (Use um link direto para um arquivo .jpg ou .png)
+        const GRASS_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif'; // Textura placeholder simples
+
+        // Vamos usar uma cor verde sólida mais próxima da sua imagem (se o carregamento da textura falhar ou for muito complexo)
+        const SOLID_GREEN_COLOR = 0x6AA84F; // Verde esmeralda escuro
+
         // --- Funções de Inicialização ---
 
         function init() {
-            // 1. Cena (Onde tudo vive)
+            // 1. Cena
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x222222);
 
-            // 2. Câmera (O "olho" do jogador, perspectiva de cima)
+            // 2. Câmera
             const aspectRatio = window.innerWidth / window.innerHeight;
-            // Configuração para perspectiva (Top-down shooter 3D)
             camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
-            camera.position.set(0, 10, 0); // Posiciona a 10 unidades acima do chão
-            camera.lookAt(0, 0, 0);       // Olha para o centro
+            camera.position.set(0, 10, 0);
+            camera.lookAt(0, 0, 0);
 
-            // 3. Renderer (Desenha a cena na tela)
+            // 3. Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             container.appendChild(renderer.domElement);
 
-            // 4. Luzes (Ilumina os objetos)
+            // 4. Luzes
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -81,18 +88,45 @@
 
             // 5. Adicionar Objetos
 
-            // Chão
+            // --- CHÃO COM TEXTURA ---
             const floorGeometry = new THREE.PlaneGeometry(20, 20);
-            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x444444, side: THREE.DoubleSide });
+            let floorMaterial;
+
+            // Tenta carregar a textura
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(GRASS_TEXTURE_URL,
+                // Função de sucesso
+                function (texture) {
+                    // Configura a textura para se repetir
+                    texture.wrapS = THREE.RepeatWrapping;
+                    texture.wrapT = THREE.RepeatWrapping;
+                    texture.repeat.set(5, 5); // Repete 5 vezes no X e 5 no Z (para cobrir 20x20)
+
+                    // Cria o material usando a textura
+                    const texturedMaterial = new THREE.MeshStandardMaterial({ map: texture, side: THREE.DoubleSide });
+                    floor.material = texturedMaterial;
+                },
+                // Função de progresso (opcional)
+                undefined,
+                // Função de erro (fallback para cor sólida)
+                function (err) {
+                    console.error('Erro ao carregar a textura de grama. Usando cor verde sólida.', err);
+                    floor.material = new THREE.MeshStandardMaterial({ color: SOLID_GREEN_COLOR, side: THREE.DoubleSide });
+                }
+            );
+
+            // Material inicial (cor sólida de fallback até a textura carregar)
+            floorMaterial = new THREE.MeshStandardMaterial({ color: SOLID_GREEN_COLOR, side: THREE.DoubleSide });
             const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = Math.PI / 2; // Gira o chão para ficar horizontal
+            floor.rotation.x = Math.PI / 2;
             scene.add(floor);
+            // -------------------------
 
             // Jogador (Um cilindro como corpo)
             const playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.0, 32);
             const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
             playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
-            playerMesh.position.set(0, 0.5, 0); // Altura de 0.5 para tocar o chão (metade da altura 1.0)
+            playerMesh.position.set(0, 0.5, 0);
             scene.add(playerMesh);
 
             // Inimigo (Um cubo simples)
@@ -109,7 +143,7 @@
             joystick("joystick-right", v => shoot = { x: v.x, z: v.y });
         }
 
-        // --- Funções de Jogo 3D ---
+        // --- Resto das Funções (updatePlayer, animate, onKeyDown, etc.) permaneceu inalterado ---
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -118,8 +152,7 @@
         }
 
         function updatePlayer(deltaTime) {
-            // Movimento do Jogador
-            let dx = 0, dz = 0; // Usamos Z para frente/trás (como no 2D era Y)
+            let dx = 0, dz = 0;
 
             if (keys.a || keys.d || keys.w || keys.s) {
                 dx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
@@ -139,7 +172,6 @@
                 playerMesh.position.z += dz * playerSpeed * deltaTime;
             }
 
-            // Rotação do Jogador (Apontar para onde atira)
             let shootX = 0, shootZ = 0;
             if (keys.left || keys.right || keys.up || keys.down) {
                 shootX = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
@@ -150,13 +182,9 @@
             }
 
             if (shootX !== 0 || shootZ !== 0) {
-                // Rotação no eixo Y (o que aponta para cima)
                 playerMesh.rotation.y = Math.atan2(shootX, shootZ);
-                // Lógica de tiro 3D (não implementada)
             }
 
-            // Atualizar a câmera para seguir o jogador (se fosse uma câmera de perseguição)
-            // Para top-down fixo, a câmera só precisa acompanhar o X e Z
             camera.position.x = playerMesh.position.x;
             camera.position.z = playerMesh.position.z;
         }
@@ -164,18 +192,13 @@
         function animate(time) {
             requestAnimationFrame(animate);
 
-            // Calcula o delta time (para movimento suave em qualquer framerate)
             const deltaTime = (time - (animate.lastTime || time)) / 16.67;
             animate.lastTime = time;
 
             updatePlayer(deltaTime);
-            // updateEnemies(deltaTime);
-            // updateBullets(deltaTime);
 
             renderer.render(scene, camera);
         }
-
-        // --- Eventos de Controle ---
 
         function onKeyDown(e) {
             if (e.key === 'w' || e.key === 'W') keys.w = true;
@@ -198,7 +221,6 @@
             if (e.key === 'ArrowRight') keys.right = false;
         }
 
-        // Joystick Functionality (Reutilizado do 2D, mas ajustado para 3D)
         function joystick(id, callback) {
             const stick = document.getElementById(id);
             const inner = document.getElementById(id + '-inner');
@@ -216,8 +238,7 @@
                 let dy = touch.clientY - center.y;
                 const mag = Math.sqrt(dx * dx + dy * dy);
                 if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
-                // No 3D, 'y' do joystick (para cima/baixo) geralmente mapeia para o eixo 'Z' (profundidade)
-                callback({ x: dx / 50, y: -dy / 50 }); // O Y é invertido no canvas, ajustamos o dy
+                callback({ x: dx / 50, y: -dy / 50 });
                 inner.style.transform = `translate(${dx}px, ${dy}px)`;
             });
             window.addEventListener("resize", () => {
