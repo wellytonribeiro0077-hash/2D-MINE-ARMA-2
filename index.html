@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mini Standoff 2 2D</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #222;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        canvas {
+            display: block;
+            background: #444;
+            width: 100%;
+            height: auto;
+            border: 2px solid #fff;
+        }
+        .joystick {
+            position: absolute;
+            bottom: 50px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            touch-action: manipulation;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .joystick-inner {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            position: absolute;
+            transition: transform 0.1s, opacity 0.1s;
+        }
+        .joystick.active .joystick-inner {
+            opacity: 0.8;
+        }
+        #joystick-left { left: 50px; }
+        #joystick-right { right: 50px; }
+        .game-over, .pause-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 40px;
+            color: red;
+            text-align: center;
+            display: none;
+        }
+        #respawnButton, #pauseButton, #resumeButton {
+            position: absolute;
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background: #444;
+            color: #fff;
+        }
+        #respawnButton {
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+        #pauseButton {
+            top: 30px;
+            right: 20px;
+        }
+        #resumeButton {
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+        @media (min-width: 801px) {
+            .joystick {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <div class="joystick" id="joystick-left"><div class="joystick-inner" id="left-inner"></div></div>
+        <div class="joystick" id="joystick-right"><div class="joystick-inner" id="right-inner"></div></div>
+        <div class="game-over" id="gameOverText">
+            Game Over<br>Pontos: <span id="finalScore">0</span>
+        </div>
+        <div class="pause-screen" id="pauseText">
+            Pausado
+        </div>
+        <button id="pauseButton">Pausar</button>
+        <button id="respawnButton">Respawn</button>
+        <button id="resumeButton">Retomar</button>
+    </div>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // High-DPI scaling
+        const scale = window.devicePixelRatio;
+        canvas.style.width = "800px";
+        canvas.style.height = "500px";
+        canvas.width = 800 * scale;
+        canvas.height = 500 * scale;
+        ctx.scale(scale, scale);
+
+        let player = { x: 400, y: 250, angle: 0, health: 100, speed: 3, lastShot: 0, lives: 3 };
+        let bullets = [];
+        let enemyBullets = [];
+        let enemies = [
+            { x: 100, y: 100, speed: 1, health: 50, type: 'melee' },
+            { x: 700, y: 400, speed: 1, health: 50, type: 'melee' }
+        ];
+        let walls = [
+            { x: 200, y: 200, width: 100, height: 20, health: 50 },
+            { x: 500, y: 300, width: 20, height: 100, health: 50 }
+        ];
+        let powerUps = [];
+        let score = 0;
+        let gameRunning = true;
+        let paused = false;
+        let lastTime = 0;
+        let lastSpawn = Date.now();
+
+        let move = { x: 0, y: 0 };
+        let shoot = { x: 0, y: 0 };
+        const keys = { w: false, s: false, a: false, d: false, up: false, down: false, left: false, right: false };
+
+        // Sound effects
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(frequency, duration) {
+            const oscillator = audioCtx.createOscillator();
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            oscillator.connect(audioCtx.destination);
+            oscillator.start();
+            setTimeout(() => oscillator.stop(), duration);
+        }
+        function playShootSound() { playSound(800, 50); }
+        function playEnemyShootSound() { playSound(600, 50); }
+        function playHitSound() { playSound(400, 100); }
+        function playPowerUpSound() { playSound(1000, 100); setTimeout(() => playSound(1200, 100), 100); }
+        function playGameOverSound() { playSound(200, 200); }
+        function playWallBreakSound() { playSound(300, 150); }
+
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            ctx.rotate(player.angle);
+            ctx.fillStyle = "#00FF00"; // Green body
+            ctx.fillRect(-15, -10, 30, 20);
+            ctx.fillStyle = "#FFD700"; // Yellow head
+            ctx.beginPath();
+            ctx.arc(10, 0, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#000"; // Eyes
+            ctx.beginPath();
+            ctx.arc(8, -4, 2, 0, Math.PI * 2);
+            ctx.arc(8, 4, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#888"; // Gun
+            ctx.fillRect(15, -2, 10, 4);
+            ctx.restore();
+            // Health bar
+            ctx.fillStyle = "#FF0000";
+            ctx.fillRect(player.x - 20, player.y - 20, 40, 5);
+            ctx.fillStyle = "#00FF00";
+            ctx.fillRect(player.x - 20, player.y - 20, 40 * (player.health / 100), 5);
+            // Lives
+            ctx.fillStyle = "#FFF";
+            ctx.font = "16px Arial";
+            ctx.fillText(`Vidas: ${player.lives}`, player.x - 20, player.y - 30);
+        }
+
+        function drawBullets() {
+            bullets.forEach(b => {
+                ctx.fillStyle = "#FF0000";
+                ctx.fillRect(b.x - 5, b.y - 5, 10, 10);
+                ctx.strokeStyle = "#FFF";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(b.x - 5, b.y - 5, 10, 10);
+                // Explosion effect
+                if (b.hit) {
+                    ctx.fillStyle = "rgba(255, 165, 0, 0.5)";
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            enemyBullets.forEach(b => {
+                ctx.fillStyle = "#FF4500";
+                ctx.fillRect(b.x - 5, b.y - 5, 10, 10);
+                ctx.strokeStyle = "#FFF";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(b.x - 5, b.y - 5, 10, 10);
+            });
+        }
+
+        function drawEnemies() {
+            enemies.forEach(e => {
+                ctx.fillStyle = e.type === 'melee' ? "#800080" : "#FF0000";
+                ctx.fillRect(e.x - 15, e.y - 15, 30, 30);
+                ctx.fillStyle = "#000";
+                ctx.beginPath();
+                ctx.arc(e.x - 5, e.y - 5, 3, 0, Math.PI * 2);
+                ctx.arc(e.x + 5, e.y - 5, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#FF0000";
+                ctx.fillRect(e.x - 15, e.y - 25, 30, 5);
+                ctx.fillStyle = "#00FF00";
+                ctx.fillRect(e.x - 15, e.y - 25, 30 * (e.health / (e.type === 'melee' ? 50 : 30)), 5);
+            });
+        }
+
+        function drawWalls() {
+            walls.forEach(w => {
+                if (w.health <= 0) return;
+                ctx.fillStyle = "#808080";
+                ctx.fillRect(w.x, w.y, w.width, w.height);
+                ctx.strokeStyle = "#FFF";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(w.x, w.y, w.width, w.height);
+            });
+        }
+
+        function drawPowerUps() {
+            powerUps.forEach(p => {
+                ctx.fillStyle = p.type === 'health' ? "#00FF00" : "#FFFF00";
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "#FFF";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
+
+        function drawScore() {
+            ctx.font = "20px Arial";
+            ctx.fillStyle = "#FFF";
+            ctx.fillText(`Pontos: ${score}`, 10, 30);
+        }
+
+        function update(deltaTime) {
+            if (paused) return;
+
+            // Player movement
+            let moveSpeed = player.speed * deltaTime;
+            if (keys.a || keys.d || keys.w || keys.s) {
+                move.x = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+                move.y = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
+                const mag = Math.sqrt(move.x * move.x + move.y * move.y);
+                if (mag > 0) { move.x /= mag; move.y /= mag; }
+            }
+            let nextX = player.x + move.x * moveSpeed;
+            let nextY = player.y + move.y * moveSpeed;
+            let canMove = true;
+            walls.forEach(w => {
+                if (w.health <= 0) return;
+                if (nextX - 15 < w.x + w.width && nextX + 15 > w.x && nextY - 15 < w.y + w.height && nextY + 15 > w.y) {
+                    canMove = false;
+                }
+            });
+            if (canMove) {
+                player.x = Math.max(15, Math.min(canvas.width - 15, nextX));
+                player.y = Math.max(15, Math.min(canvas.height - 15, nextY));
+            }
+
+            // Player shooting
+            if (keys.left || keys.right || keys.up || keys.down) {
+                shoot.x = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+                shoot.y = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+                const mag = Math.sqrt(shoot.x * shoot.x + shoot.y * shoot.y);
+                if (mag > 0) { shoot.x /= mag; shoot.y /= mag; }
+            }
+            if (shoot.x !== 0 || shoot.y !== 0) {
+                player.angle = Math.atan2(shoot.y, shoot.x);
+                if (!player.lastShot || Date.now() - player.lastShot > 300) {
+                    bullets.push({
+                        x: player.x + Math.cos(player.angle) * 15,
+                        y: player.y + Math.sin(player.angle) * 15,
+                        vx: Math.cos(player.angle) * 5,
+                        vy: Math.sin(player.angle) * 5,
+                        hit: false
+                    });
+                    player.lastShot = Date.now();
+                    playShootSound();
+                }
+            }
+
+            // Update bullets
+            bullets.forEach((b, i) => {
+                b.x += b.vx * deltaTime;
+                b.y += b.vy * deltaTime;
+                if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
+                    bullets.splice(i, 1);
+                    return;
+                }
+                walls.forEach((w, j) => {
+                    if (w.health <= 0) return;
+                    if (b.x - 5 < w.x + w.width && b.x + 5 > w.x && b.y - 5 < w.y + w.height && b.y + 5 > w.y) {
+                        w.health -= 10;
+                        bullets.splice(i, 1);
+                        if (w.health <= 0) playWallBreakSound();
+                    }
+                });
+            });
+
+            // Update enemy bullets
+            enemyBullets.forEach((b, i) => {
+                b.x += b.vx * deltaTime;
+                b.y += b.vy * deltaTime;
+                if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
+                    enemyBullets.splice(i, 1);
+                    return;
+                }
+                walls.forEach((w, j) => {
+                    if (w.health <= 0) return;
+                    if (b.x - 5 < w.x + w.width && b.x + 5 > w.x && b.y - 5 < w.y + w.height && b.y + 5 > w.y) {
+                        w.health -= 10;
+                        enemyBullets.splice(i, 1);
+                        if (w.health <= 0) playWallBreakSound();
+                    }
+                });
+                if (Math.hypot(b.x - player.x, b.y - player.y) < 20) {
+                    player.health -= 5;
+                    enemyBullets.splice(i, 1);
+                    if (player.health <= 0) gameOver();
+                }
+            });
+
+            // Update enemies
+            enemies.forEach((e, i) => {
+                const dx = player.x - e.x;
+                const dy = player.y - e.y;
+                const mag = Math.sqrt(dx * dx + dy * dy);
+                if (e.type === 'melee' && mag > 0) {
+                    let canMove = true;
+                    const nextX = e.x + (dx / mag) * e.speed * deltaTime;
+                    const nextY = e.y + (dy / mag) * e.speed * deltaTime;
+                    walls.forEach(w => {
+                        if (w.health <= 0) return;
+                        if (nextX - 15 < w.x + w.width && nextX + 15 > w.x && nextY - 15 < w.y + w.height && nextY + 15 > w.y) {
+                            canMove = false;
+                        }
+                    });
+                    if (canMove) {
+                        e.x = nextX;
+                        e.y = nextY;
+                    }
+                    if (Math.hypot(player.x - e.x, player.y - e.y) < 30) {
+                        player.health -= 10 * deltaTime;
+                        if (player.health <= 0) gameOver();
+                    }
+                } else if (e.type === 'shooter' && mag > 50) {
+                    let canMove = true;
+                    const nextX = e.x + (dx / mag) * e.speed * deltaTime;
+                    const nextY = e.y + (dy / mag) * e.speed * deltaTime;
+                    walls.forEach(w => {
+                        if (w.health <= 0) return;
+                        if (nextX - 15 < w.x + w.width && nextX + 15 > w.x && nextY - 15 < w.y + w.height && nextY + 15 > w.y) {
+                            canMove = false;
+                        }
+                    });
+                    if (canMove) {
+                        e.x = nextX;
+                        e.y = nextY;
+                    }
+                }
+                if (e.type === 'shooter' && (!e.lastShot || Date.now() - e.lastShot > 1000)) {
+                    if (mag < 300) {
+                        enemyBullets.push({
+                            x: e.x,
+                            y: e.y,
+                            vx: (dx / mag) * 4,
+                            vy: (dy / mag) * 4
+                        });
+                        e.lastShot = Date.now();
+                        playEnemyShootSound();
+                    }
+                }
+                bullets.forEach((b, j) => {
+                    if (Math.hypot(b.x - e.x, b.y - e.y) < 20) {
+                        e.health -= 10;
+                        b.hit = true;
+                        setTimeout(() => bullets.splice(j, 1), 100);
+                        if (e.health <= 0) {
+                            enemies.splice(i, 1);
+                            score += e.type === 'melee' ? 100 : 150;
+                            playHitSound();
+                            if (Math.random() < 0.3) {
+                                powerUps.push({
+                                    x: e.x,
+                                    y: e.y,
+                                    type: Math.random() < 0.5 ? 'health' : 'speed'
+                                });
+                            }
+                        }
+                    }
+                });
+            });
+
+            // Update power-ups
+            powerUps.forEach((p, i) => {
+                if (Math.hypot(player.x - p.x, player.y - p.y) < 25) {
+                    if (p.type === 'health') {
+                        player.health = Math.min(100, player.health + 50);
+                    } else {
+                        player.speed = 4.5;
+                        setTimeout(() => player.speed = 3, 5000);
+                    }
+                    powerUps.splice(i, 1);
+                    playPowerUpSound();
+                }
+            });
+
+            // Spawn enemies
+            if (Date.now() - lastSpawn > 5000 && enemies.length < 5) {
+                const side = Math.floor(Math.random() * 4);
+                let x, y;
+                if (side === 0) { x = Math.random() * canvas.width; y = 0; }
+                else if (side === 1) { x = Math.random() * canvas.width; y = canvas.height; }
+                else if (side === 2) { x = 0; y = Math.random() * canvas.height; }
+                else { x = canvas.width; y = Math.random() * canvas.height; }
+                enemies.push({
+                    x, y, speed: Math.random() < 0.3 ? 0.8 : 1,
+                    health: Math.random() < 0.3 ? 30 : 50,
+                    type: Math.random() < 0.3 ? 'shooter' : 'melee',
+                    lastShot: 0
+                });
+                lastSpawn = Date.now();
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#444');
+            gradient.addColorStop(1, '#222');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawWalls();
+            drawPowerUps();
+            drawEnemies();
+            drawBullets();
+            drawPlayer();
+            drawScore();
+        }
+
+        function gameOver() {
+            player.lives -= 1;
+            if (player.lives <= 0) {
+                gameRunning = false;
+                document.getElementById('finalScore').textContent = score;
+                document.getElementById('gameOverText').style.display = 'block';
+                document.getElementById('respawnButton').style.display = 'none';
+                playGameOverSound();
+            } else {
+                player.health = 100;
+                player.x = 400;
+                player.y = 250;
+                bullets = [];
+                enemyBullets = [];
+                document.getElementById('gameOverText').style.display = 'block';
+                document.getElementById('finalScore').textContent = score;
+                document.getElementById('respawnButton').style.display = 'block';
+                gameRunning = false;
+                playGameOverSound();
+            }
+        }
+
+        document.getElementById('respawnButton').addEventListener('click', () => {
+            player.health = 100;
+            player.x = 400;
+            player.y = 250;
+            bullets = [];
+            enemyBullets = [];
+            enemies = [
+                { x: 100, y: 100, speed: 1, health: 50, type: 'melee' },
+                { x: 700, y: 400, speed: 1, health: 50, type: 'melee' }
+            ];
+            gameRunning = true;
+            document.getElementById('gameOverText').style.display = 'none';
+            document.getElementById('respawnButton').style.display = 'none';
+            requestAnimationFrame(gameLoop);
+        });
+
+        document.getElementById('pauseButton').addEventListener('click', () => {
+            paused = true;
+            document.getElementById('pauseText').style.display = 'block';
+            document.getElementById('resumeButton').style.display = 'block';
+            document.getElementById('pauseB
