@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Câmera Giratória por Toque)</title>
+    <title>Mini Standoff 2 3D (Versão Final)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        /* --- Estilos do Menu Principal (Mantidos) --- */
+        /* --- Estilos do Menu Principal --- */
         #main-menu {
             position: absolute;
             top: 0;
@@ -59,8 +59,8 @@
         
         #joystick-left { 
             left: 50px; 
-            /* Placeholder: Use a URL direta da sua imagem hospedada */
-            background-image: url('URL_DA_SUA_IMAGEM_JOYSTICK_AQUI'); 
+            /* URL DA IMAGEM DO USUÁRIO INSERIDA AQUI */
+            background-image: url('https://png.pngtree.com/png-clipart/20230806/original/pngtree-game-controller-button-game-graphics-game-asset-control-vector-picture-image_9947922.png'); 
             background-size: cover;
             background-position: center;
             background-color: transparent;
@@ -75,27 +75,24 @@
             position: absolute;
         }
         
-        /* --- NOVO: Área de Rotação da Câmera (Lado Direito da Tela) --- */
+        /* --- Área de Rotação da Câmera (Lado Direito da Tela) --- */
         #camera-area {
             position: absolute;
             right: 0;
             top: 0;
-            width: 50%; /* Metade direita da tela */
+            width: 50%; 
             height: 100%;
-            z-index: 5; /* Abaixo dos joysticks visuais */
-            touch-action: none; /* Permite o rastreamento do toque */
-            /* background-color: rgba(0, 255, 0, 0.1); /* Descomente para visualizar a área de toque */
+            z-index: 5; 
+            touch-action: none; 
         }
-
 
         @media (max-width: 800px) {
             #game-container.active .joystick { display: flex; }
-            /* Garante que a área de toque esteja ativa em dispositivos móveis */
             #camera-area { display: block; } 
         }
         @media (min-width: 801px) {
              .joystick { display: none !important; }
-             #camera-area { display: none; } /* Desativa em desktop (usa mouse/teclado) */
+             #camera-area { display: none; } 
         }
     </style>
 </head>
@@ -127,11 +124,10 @@
         let gameRunning = false;
         
         let move = { x: 0, z: 0 };
-        //let shoot = { x: 0, z: 0 }; // Removido, controle de câmera substitui a mira de joystick
         
-        const keys = { w: false, s: false, a: false, d: false, up: false, down: false, left: false, right: false };
+        const keys = { w: false, s: false, a: false, d: false };
         let playerSpeed = 0.05;
-        let cameraRotationSpeed = 0.005; // Sensibilidade de rotação
+        let cameraRotationSpeed = 0.005;
 
         // Estado do toque na área de rotação
         let isRotating = false;
@@ -141,6 +137,7 @@
         const CAMERA_DISTANCE = 3; 
         const CAMERA_HEIGHT = 1.5; 
 
+        // Textura do Chão (Mantida)
         const GRASS_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif';
         const SOLID_GREEN_COLOR = 0x6AA84F; 
 
@@ -150,7 +147,6 @@
             mainMenu.style.display = 'none';
             leftJoystick.style.display = 'flex';
             
-            // Adiciona listeners de toque para rotação apenas quando o jogo inicia
             cameraArea.addEventListener('touchstart', handleTouchStart, false);
             cameraArea.addEventListener('touchmove', handleTouchMove, false);
             cameraArea.addEventListener('touchend', handleTouchEnd, false);
@@ -168,9 +164,7 @@
         function handleTouchStart(event) {
             if (!gameRunning) return;
             isRotating = true;
-            // Pega a posição X do primeiro toque para calcular o delta
             lastTouchX = event.touches[0].clientX;
-            // Previne que a tela role ou faça zoom
             event.preventDefault(); 
         }
 
@@ -180,7 +174,7 @@
             const currentX = event.touches[0].clientX;
             const deltaX = currentX - lastTouchX;
             
-            // Aplica a rotação ao jogador com base no movimento do dedo
+            // Rotação do jogador baseada no arrasto horizontal
             playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
             
             lastTouchX = currentX;
@@ -193,7 +187,7 @@
             event.preventDefault();
         }
 
-        // --- Funções de Inicialização 3D (Mantidas) ---
+        // --- Funções de Inicialização 3D ---
 
         function init() {
             scene = new THREE.Scene();
@@ -251,27 +245,22 @@
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('keydown', onKeyDown);
             document.addEventListener('keyup', onKeyUp);
-            // O joystick de movimento (esquerdo) é o único que resta aqui
             joystick("joystick-left", v => move = { x: v.x, z: v.y });
             
-            // Adiciona mouse/teclado para rotação em desktop (opcional, mas bom para testes)
             document.addEventListener('mousemove', handleMouseMove, false);
         }
 
         // --- Rotação de Câmera/Jogador para Desktop (Mouse) ---
         function handleMouseMove(event) {
-            if (!gameRunning || window.innerWidth <= 800) return; // Só para desktop
+            if (!gameRunning || window.innerWidth <= 800) return; 
             
-            // Usa o botão direito do mouse para simular o arrastar da câmera, se necessário, ou sempre gira:
-            // Vamos fazer girar apenas quando o mouse estiver pressionado no lado direito
-            if (event.buttons === 1) { // Verifica se o botão principal do mouse está pressionado
+            if (event.buttons === 1) { 
                  const deltaX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
                  playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
             }
         }
 
-
-        // --- Funções de Jogo 3D (Update modificado para usar a rotação do jogador) ---
+        // --- Funções de Jogo 3D (Update com controles corrigidos) ---
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -282,16 +271,14 @@
         function updatePlayer(deltaTime) {
             let dx = 0, dz = 0;
 
-            // Movimento baseado na rotação do jogador (o que é crucial para jogos 3D)
             if (keys.a || keys.d || keys.w || keys.s || move.x !== 0 || move.z !== 0) {
-                // Obter a rotação atual do jogador
                 const rotationAngle = playerMesh.rotation.y;
                 
-                // Mapeia o input do joystick/teclado para direções relativas ao jogador
-                // W/S -> frente/trás, A/D -> lado esquerdo/direito
+                // CORRIGIDO: inputX (Horizontal) e inputZ (Vertical)
                 let inputX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + move.x;
-                let inputZ = (keys.s ? 1 : 0) - (keys.w ? 1 : 0) + move.z;
-
+                // CORREÇÃO: Invertido para que W/Cima (joystick) mova para frente
+                let inputZ = (keys.s ? 1 : 0) - (keys.w ? 1 : 0) - move.z; 
+                
                 // Normaliza o vetor de movimento
                 const mag = Math.sqrt(inputX * inputX + inputZ * inputZ);
                 if (mag > 0) {
@@ -299,8 +286,10 @@
                     inputZ /= mag;
                 }
 
-                // Rotaciona o vetor de movimento pelo ângulo do jogador
+                // Rotaciona o vetor de movimento para alinhar com a câmera (jogador)
+                // Movimento lateral (Strafe)
                 dx = inputX * Math.cos(rotationAngle) - inputZ * Math.sin(rotationAngle);
+                // Movimento frente/trás
                 dz = inputX * Math.sin(rotationAngle) + inputZ * Math.cos(rotationAngle);
             }
 
@@ -308,15 +297,13 @@
             playerMesh.position.x += dx * playerSpeed * deltaTime;
             playerMesh.position.z += dz * playerSpeed * deltaTime;
             
-            // A rotação do jogador é controlada pelo toque/mouse, não mais pelo joystick de tiro
-
             // Lógica da Câmera em Terceira Pessoa
             const angle = playerMesh.rotation.y;
             const targetX = playerMesh.position.x - Math.sin(angle) * CAMERA_DISTANCE;
             const targetZ = playerMesh.position.z - Math.cos(angle) * CAMERA_DISTANCE;
-            const smoothingFactor = 0.5; // Aumentei o smoothing para um movimento de câmera mais rápido
+            const smoothingFactor = 0.5; 
             
-            // Movimento da câmera
+            // Movimento suave da câmera
             camera.position.x += (targetX - camera.position.x) * smoothingFactor * deltaTime;
             camera.position.z += (targetZ - camera.position.z) * smoothingFactor * deltaTime;
             camera.position.y = playerMesh.position.y + CAMERA_HEIGHT; 
@@ -338,7 +325,7 @@
             renderer.render(scene, camera);
         }
 
-        // --- Funções de Controle (joystick modificada para afetar apenas move) ---
+        // --- Funções de Controle (joystick e teclado) ---
 
         function onKeyDown(e) {
             if (!gameRunning) return; 
@@ -347,7 +334,6 @@
             if (e.key === 'a' || e.key === 'A') keys.a = true;
             if (e.key === 'd' || e.key === 'D') keys.d = true;
             
-            // As teclas de seta agora giram o jogador em desktop
             if (e.key === 'ArrowLeft') playerMesh.rotation.y += 0.05;
             if (e.key === 'ArrowRight') playerMesh.rotation.y -= 0.05;
         }
@@ -371,9 +357,8 @@
                 e.preventDefault(); 
                 active = true; 
                 stick.classList.add('active'); 
-                // Apenas o toque que começar dentro do joystick move o player
                 if (e.touches.length > 0) {
-                     rect = stick.getBoundingClientRect(); // Atualiza a posição
+                     rect = stick.getBoundingClientRect(); 
                      center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
                 }
             }, false);
@@ -382,7 +367,7 @@
                 if (!gameRunning) return;
                 e.preventDefault(); 
                 active = false; 
-                callback({ x: 0, y: 0 }); 
+                callback({ x: 0, z: 0 }); 
                 inner.style.transform = `translate(0px, 0px)`; 
                 stick.classList.remove('active'); 
             }, false);
@@ -395,7 +380,9 @@
                 let dy = touch.clientY - center.y;
                 const mag = Math.sqrt(dx * dx + dy * dy);
                 if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
-                callback({ x: dx / 50, y: -dy / 50 });
+                
+                // Mapeamento: x = horizontal, z = vertical (o -dy inverte a direção da tela para a convenção 3D)
+                callback({ x: dx / 50, z: -dy / 50 }); 
                 inner.style.transform = `translate(${dx}px, ${dy}px)`;
             }, false);
             
