@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Menu Principal)</title>
+    <title>Mini Standoff 2 3D (Câmera Giratória por Toque)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        /* --- Estilos do Menu Principal --- */
+        /* --- Estilos do Menu Principal (Mantidos) --- */
         #main-menu {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.8); /* Fundo escuro semitransparente */
+            background-color: rgba(0, 0, 0, 0.8);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 20; /* Garantir que o menu fique sobre o jogo 3D e joysticks */
+            z-index: 20;
         }
 
         .menu-button {
@@ -34,46 +34,68 @@
             cursor: pointer;
             width: 300px;
             text-align: center;
-            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); /* Forma hexagonal inspirada na imagem */
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
             transition: background-color 0.2s, color 0.2s, transform 0.1s;
         }
 
         .menu-button:hover {
-            background-color: #FFD700; /* Dourado */
+            background-color: #FFD700;
             color: #222;
             transform: scale(1.05);
         }
         
-        /* --- Estilos dos Joysticks (mantidos) --- */
+        /* --- Estilos do Joystick de Movimento (Lado Esquerdo) --- */
         .joystick {
             position: absolute;
             bottom: 50px;
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
+            width: 120px;
+            height: 120px;
             touch-action: manipulation;
-            display: none; /* Inicia escondido */
+            display: none;
             justify-content: center;
             align-items: center;
             z-index: 10;
         }
+        
+        #joystick-left { 
+            left: 50px; 
+            /* Placeholder: Use a URL direta da sua imagem hospedada */
+            background-image: url('URL_DA_SUA_IMAGEM_JOYSTICK_AQUI'); 
+            background-size: cover;
+            background-position: center;
+            background-color: transparent;
+            border-radius: 0;
+        }
+
         .joystick-inner {
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.7);
             position: absolute;
         }
-        #joystick-left { left: 50px; }
-        #joystick-right { right: 50px; }
+        
+        /* --- NOVO: Área de Rotação da Câmera (Lado Direito da Tela) --- */
+        #camera-area {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 50%; /* Metade direita da tela */
+            height: 100%;
+            z-index: 5; /* Abaixo dos joysticks visuais */
+            touch-action: none; /* Permite o rastreamento do toque */
+            /* background-color: rgba(0, 255, 0, 0.1); /* Descomente para visualizar a área de toque */
+        }
 
-        /* Mostrar joysticks apenas em telas pequenas e quando o jogo estiver ativo */
+
         @media (max-width: 800px) {
             #game-container.active .joystick { display: flex; }
+            /* Garante que a área de toque esteja ativa em dispositivos móveis */
+            #camera-area { display: block; } 
         }
         @media (min-width: 801px) {
-            .joystick { display: none !important; }
+             .joystick { display: none !important; }
+             #camera-area { display: none; } /* Desativa em desktop (usa mouse/teclado) */
         }
     </style>
 </head>
@@ -88,7 +110,8 @@
     </div>
 
     <div class="joystick" id="joystick-left"><div class="joystick-inner" id="left-inner"></div></div>
-    <div class="joystick" id="joystick-right"><div class="joystick-inner" id="right-inner"></div></div>
+    
+    <div id="camera-area"></div> 
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
@@ -99,14 +122,20 @@
         const container = document.getElementById('game-container');
         const mainMenu = document.getElementById('main-menu');
         const leftJoystick = document.getElementById('joystick-left');
-        const rightJoystick = document.getElementById('joystick-right');
+        const cameraArea = document.getElementById('camera-area');
         
-        let gameRunning = false; // Estado do jogo
+        let gameRunning = false;
         
         let move = { x: 0, z: 0 };
-        let shoot = { x: 0, z: 0 };
+        //let shoot = { x: 0, z: 0 }; // Removido, controle de câmera substitui a mira de joystick
+        
         const keys = { w: false, s: false, a: false, d: false, up: false, down: false, left: false, right: false };
         let playerSpeed = 0.05;
+        let cameraRotationSpeed = 0.005; // Sensibilidade de rotação
+
+        // Estado do toque na área de rotação
+        let isRotating = false;
+        let lastTouchX = 0;
 
         // Parâmetros da Câmera em Terceira Pessoa
         const CAMERA_DISTANCE = 3; 
@@ -118,54 +147,72 @@
         // --- Funções de Menu e Estado ---
 
         function startGame() {
-            // 1. Esconder Menu
             mainMenu.style.display = 'none';
-            
-            // 2. Mostrar Controles (Se for móvel)
             leftJoystick.style.display = 'flex';
-            rightJoystick.style.display = 'flex';
             
-            // 3. Iniciar o Jogo
+            // Adiciona listeners de toque para rotação apenas quando o jogo inicia
+            cameraArea.addEventListener('touchstart', handleTouchStart, false);
+            cameraArea.addEventListener('touchmove', handleTouchMove, false);
+            cameraArea.addEventListener('touchend', handleTouchEnd, false);
+
             gameRunning = true;
-            animate(0); // Iniciar o loop de renderização 3D
+            animate(0); 
             console.log("Jogo Iniciado!");
         }
         
-        function showOptions() {
-            alert("Opções: Funcionalidade a ser implementada!");
+        function showOptions() { alert("Opções: Funcionalidade a ser implementada!"); }
+        function exitGame() { alert("Sair: Voltando ao Menu Principal (simulação de saída)."); }
+
+        // --- Controle de Câmera por Toque (Lado Direito) ---
+
+        function handleTouchStart(event) {
+            if (!gameRunning) return;
+            isRotating = true;
+            // Pega a posição X do primeiro toque para calcular o delta
+            lastTouchX = event.touches[0].clientX;
+            // Previne que a tela role ou faça zoom
+            event.preventDefault(); 
         }
 
-        function exitGame() {
-            alert("Sair: Voltando ao Menu Principal (simulação de saída).");
-            // Em um ambiente de desktop, o código tentaria fechar a janela, mas isso é bloqueado por navegadores modernos.
-            // Para o nosso caso, apenas exibimos uma mensagem e mantemos o menu.
+        function handleTouchMove(event) {
+            if (!gameRunning || !isRotating) return;
+            
+            const currentX = event.touches[0].clientX;
+            const deltaX = currentX - lastTouchX;
+            
+            // Aplica a rotação ao jogador com base no movimento do dedo
+            playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
+            
+            lastTouchX = currentX;
+            event.preventDefault();
         }
 
-        // --- Funções de Inicialização 3D ---
+        function handleTouchEnd(event) {
+            if (!gameRunning) return;
+            isRotating = false;
+            event.preventDefault();
+        }
+
+        // --- Funções de Inicialização 3D (Mantidas) ---
 
         function init() {
-            // 1. Cena
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x222222);
 
-            // 2. Câmera
             const aspectRatio = window.innerWidth / window.innerHeight;
             camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
             camera.position.set(0, CAMERA_HEIGHT, CAMERA_DISTANCE); 
 
-            // 3. Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             container.appendChild(renderer.domElement);
 
-            // 4. Luzes
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
             directionalLight.position.set(5, 5, 5);
             scene.add(directionalLight);
 
-            // 5. Adicionar Objetos (Chão)
             const floorGeometry = new THREE.PlaneGeometry(20, 20);
             let floorMaterial;
             const textureLoader = new THREE.TextureLoader();
@@ -189,14 +236,12 @@
             floor.rotation.x = Math.PI / 2;
             scene.add(floor);
 
-            // Jogador (Um cilindro como corpo)
             const playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.0, 32);
             const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
             playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
             playerMesh.position.set(0, 0.5, 0);
             scene.add(playerMesh);
 
-            // Inimigo (Um cubo simples)
             const enemyGeometry = new THREE.BoxGeometry(1, 1, 1);
             const enemyMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
             enemyMesh = new THREE.Mesh(enemyGeometry, enemyMaterial);
@@ -206,11 +251,27 @@
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('keydown', onKeyDown);
             document.addEventListener('keyup', onKeyUp);
+            // O joystick de movimento (esquerdo) é o único que resta aqui
             joystick("joystick-left", v => move = { x: v.x, z: v.y });
-            joystick("joystick-right", v => shoot = { x: v.x, z: v.y });
+            
+            // Adiciona mouse/teclado para rotação em desktop (opcional, mas bom para testes)
+            document.addEventListener('mousemove', handleMouseMove, false);
         }
 
-        // --- Funções de Jogo 3D (Mantidas) ---
+        // --- Rotação de Câmera/Jogador para Desktop (Mouse) ---
+        function handleMouseMove(event) {
+            if (!gameRunning || window.innerWidth <= 800) return; // Só para desktop
+            
+            // Usa o botão direito do mouse para simular o arrastar da câmera, se necessário, ou sempre gira:
+            // Vamos fazer girar apenas quando o mouse estiver pressionado no lado direito
+            if (event.buttons === 1) { // Verifica se o botão principal do mouse está pressionado
+                 const deltaX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+                 playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
+            }
+        }
+
+
+        // --- Funções de Jogo 3D (Update modificado para usar a rotação do jogador) ---
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -221,52 +282,51 @@
         function updatePlayer(deltaTime) {
             let dx = 0, dz = 0;
 
-            if (keys.a || keys.d || keys.w || keys.s) {
-                dx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-                dz = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
-            } else {
-                dx = move.x;
-                dz = move.z;
+            // Movimento baseado na rotação do jogador (o que é crucial para jogos 3D)
+            if (keys.a || keys.d || keys.w || keys.s || move.x !== 0 || move.z !== 0) {
+                // Obter a rotação atual do jogador
+                const rotationAngle = playerMesh.rotation.y;
+                
+                // Mapeia o input do joystick/teclado para direções relativas ao jogador
+                // W/S -> frente/trás, A/D -> lado esquerdo/direito
+                let inputX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + move.x;
+                let inputZ = (keys.s ? 1 : 0) - (keys.w ? 1 : 0) + move.z;
+
+                // Normaliza o vetor de movimento
+                const mag = Math.sqrt(inputX * inputX + inputZ * inputZ);
+                if (mag > 0) {
+                    inputX /= mag;
+                    inputZ /= mag;
+                }
+
+                // Rotaciona o vetor de movimento pelo ângulo do jogador
+                dx = inputX * Math.cos(rotationAngle) - inputZ * Math.sin(rotationAngle);
+                dz = inputX * Math.sin(rotationAngle) + inputZ * Math.cos(rotationAngle);
             }
 
-            const magnitude = Math.sqrt(dx * dx + dz * dz);
-
-            if (magnitude > 0) {
-                dx /= magnitude;
-                dz /= magnitude;
-
-                playerMesh.position.x += dx * playerSpeed * deltaTime;
-                playerMesh.position.z += dz * playerSpeed * deltaTime;
-            }
-
-            let shootX = 0, shootZ = 0;
-            if (keys.left || keys.right || keys.up || keys.down) {
-                shootX = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-                shootZ = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
-            } else {
-                shootX = shoot.x;
-                shootZ = shoot.z;
-            }
-
-            if (shootX !== 0 || shootZ !== 0) {
-                playerMesh.rotation.y = Math.atan2(shootX, shootZ);
-            }
+            // Aplica o movimento
+            playerMesh.position.x += dx * playerSpeed * deltaTime;
+            playerMesh.position.z += dz * playerSpeed * deltaTime;
             
+            // A rotação do jogador é controlada pelo toque/mouse, não mais pelo joystick de tiro
+
             // Lógica da Câmera em Terceira Pessoa
             const angle = playerMesh.rotation.y;
             const targetX = playerMesh.position.x - Math.sin(angle) * CAMERA_DISTANCE;
             const targetZ = playerMesh.position.z - Math.cos(angle) * CAMERA_DISTANCE;
-            const smoothingFactor = 0.1; 
+            const smoothingFactor = 0.5; // Aumentei o smoothing para um movimento de câmera mais rápido
             
+            // Movimento da câmera
             camera.position.x += (targetX - camera.position.x) * smoothingFactor * deltaTime;
             camera.position.z += (targetZ - camera.position.z) * smoothingFactor * deltaTime;
             camera.position.y = playerMesh.position.y + CAMERA_HEIGHT; 
 
+            // A câmera sempre olha para o jogador
             camera.lookAt(playerMesh.position.x, playerMesh.position.y + 0.5, playerMesh.position.z);
         }
 
         function animate(time) {
-            if (!gameRunning) return; // Parar o loop se o jogo não estiver rodando
+            if (!gameRunning) return; 
 
             requestAnimationFrame(animate);
 
@@ -278,29 +338,25 @@
             renderer.render(scene, camera);
         }
 
-        // --- Funções de Controle (Mantidas) ---
+        // --- Funções de Controle (joystick modificada para afetar apenas move) ---
 
         function onKeyDown(e) {
-            if (!gameRunning) return; // Ignorar input se o menu estiver aberto
+            if (!gameRunning) return; 
             if (e.key === 'w' || e.key === 'W') keys.w = true;
             if (e.key === 's' || e.key === 'S') keys.s = true;
             if (e.key === 'a' || e.key === 'A') keys.a = true;
             if (e.key === 'd' || e.key === 'D') keys.d = true;
-            if (e.key === 'ArrowUp') keys.up = true;
-            if (e.key === 'ArrowDown') keys.down = true;
-            if (e.key === 'ArrowLeft') keys.left = true;
-            if (e.key === 'ArrowRight') keys.right = true;
+            
+            // As teclas de seta agora giram o jogador em desktop
+            if (e.key === 'ArrowLeft') playerMesh.rotation.y += 0.05;
+            if (e.key === 'ArrowRight') playerMesh.rotation.y -= 0.05;
         }
         function onKeyUp(e) {
-            if (!gameRunning) return; // Ignorar input se o menu estiver aberto
+            if (!gameRunning) return; 
             if (e.key === 'w' || e.key === 'W') keys.w = false;
             if (e.key === 's' || e.key === 'S') keys.s = false;
             if (e.key === 'a' || e.key === 'A') keys.a = false;
             if (e.key === 'd' || e.key === 'D') keys.d = false;
-            if (e.key === 'ArrowUp') keys.up = false;
-            if (e.key === 'ArrowDown') keys.down = false;
-            if (e.key === 'ArrowLeft') keys.left = false;
-            if (e.key === 'ArrowRight') keys.right = false;
         }
 
         function joystick(id, callback) {
@@ -310,10 +366,29 @@
             let center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
             let active = false;
 
-            stick.addEventListener("touchstart", e => { e.preventDefault(); active = true; stick.classList.add('active'); });
-            stick.addEventListener("touchend", e => { e.preventDefault(); active = false; callback({ x: 0, y: 0 }); inner.style.transform = `translate(0px, 0px)`; stick.classList.remove('active'); });
+            stick.addEventListener("touchstart", e => { 
+                if (!gameRunning) return;
+                e.preventDefault(); 
+                active = true; 
+                stick.classList.add('active'); 
+                // Apenas o toque que começar dentro do joystick move o player
+                if (e.touches.length > 0) {
+                     rect = stick.getBoundingClientRect(); // Atualiza a posição
+                     center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+                }
+            }, false);
+            
+            stick.addEventListener("touchend", e => { 
+                if (!gameRunning) return;
+                e.preventDefault(); 
+                active = false; 
+                callback({ x: 0, y: 0 }); 
+                inner.style.transform = `translate(0px, 0px)`; 
+                stick.classList.remove('active'); 
+            }, false);
+            
             stick.addEventListener("touchmove", e => {
-                if (!active) return;
+                if (!gameRunning || !active) return;
                 e.preventDefault();
                 const touch = e.touches[0];
                 let dx = touch.clientX - center.x;
@@ -322,17 +397,15 @@
                 if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
                 callback({ x: dx / 50, y: -dy / 50 });
                 inner.style.transform = `translate(${dx}px, ${dy}px)`;
-            });
+            }, false);
+            
             window.addEventListener("resize", () => {
                 rect = stick.getBoundingClientRect();
                 center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
             });
         }
 
-        // Inicia a cena 3D, mas deixa o loop 'animate' parado até o menu ser clicado
         init();
-        // O jogo está parado (gameRunning = false) e o menu está visível.
-        // Ao clicar em 'JOGAR', a função startGame() será chamada e ativará o animate().
     </script>
 </body>
 </html>
