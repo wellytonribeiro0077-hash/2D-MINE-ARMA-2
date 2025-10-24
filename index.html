@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Versão Final)</title>
+    <title>Mini Standoff 2 3D (Estabilidade de Movimento)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -126,8 +126,11 @@
         let move = { x: 0, z: 0 };
         
         const keys = { w: false, s: false, a: false, d: false };
-        let playerSpeed = 0.05;
-        let cameraRotationSpeed = 0.005;
+        
+        // CORREÇÃO DE VELOCIDADE: Aumentado para valor mais realista e estável
+        let playerSpeed = 0.5; 
+        // CORREÇÃO DE ROTAÇÃO: Valor mais estável
+        let cameraRotationSpeed = 0.003; 
 
         // Estado do toque na área de rotação
         let isRotating = false;
@@ -260,7 +263,7 @@
             }
         }
 
-        // --- Funções de Jogo 3D (Update com controles corrigidos) ---
+        // --- Funções de Jogo 3D (Update com controles estáveis) ---
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -274,9 +277,8 @@
             if (keys.a || keys.d || keys.w || keys.s || move.x !== 0 || move.z !== 0) {
                 const rotationAngle = playerMesh.rotation.y;
                 
-                // CORRIGIDO: inputX (Horizontal) e inputZ (Vertical)
+                // Input baseado em teclado/joystick (corrigido e estável)
                 let inputX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + move.x;
-                // CORREÇÃO: Invertido para que W/Cima (joystick) mova para frente
                 let inputZ = (keys.s ? 1 : 0) - (keys.w ? 1 : 0) - move.z; 
                 
                 // Normaliza o vetor de movimento
@@ -287,13 +289,12 @@
                 }
 
                 // Rotaciona o vetor de movimento para alinhar com a câmera (jogador)
-                // Movimento lateral (Strafe)
                 dx = inputX * Math.cos(rotationAngle) - inputZ * Math.sin(rotationAngle);
-                // Movimento frente/trás
                 dz = inputX * Math.sin(rotationAngle) + inputZ * Math.cos(rotationAngle);
             }
 
-            // Aplica o movimento
+            // Aplica o movimento * PlayerSpeed * deltaTime
+            // Multiplicamos pelo deltaTime para compensar a variação de FPS (estabilidade)
             playerMesh.position.x += dx * playerSpeed * deltaTime;
             playerMesh.position.z += dz * playerSpeed * deltaTime;
             
@@ -301,11 +302,15 @@
             const angle = playerMesh.rotation.y;
             const targetX = playerMesh.position.x - Math.sin(angle) * CAMERA_DISTANCE;
             const targetZ = playerMesh.position.z - Math.cos(angle) * CAMERA_DISTANCE;
+            
+            // Smoothing de Câmera (ajustado para ser mais rápido)
             const smoothingFactor = 0.5; 
             
             // Movimento suave da câmera
-            camera.position.x += (targetX - camera.position.x) * smoothingFactor * deltaTime;
-            camera.position.z += (targetZ - camera.position.z) * smoothingFactor * deltaTime;
+            // NOTA: Não multiplicamos o movimento da Câmera por deltaTime aqui, 
+            // pois o smoothing já atua como um controle de tempo.
+            camera.position.x += (targetX - camera.position.x) * smoothingFactor;
+            camera.position.z += (targetZ - camera.position.z) * smoothingFactor;
             camera.position.y = playerMesh.position.y + CAMERA_HEIGHT; 
 
             // A câmera sempre olha para o jogador
@@ -317,10 +322,15 @@
 
             requestAnimationFrame(animate);
 
-            const deltaTime = (time - (animate.lastTime || time)) / 16.67;
-            animate.lastTime = time;
+            // CORREÇÃO: DeltaTime agora é a diferença de tempo em milissegundos
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - (animate.lastTime || currentTime)) / 1000; // DeltaTime em segundos
+            animate.lastTime = currentTime;
+            
+            // Limitamos o deltaTime para evitar saltos gigantes após longos travamentos
+            const clampedDeltaTime = Math.min(deltaTime, 0.1);
 
-            updatePlayer(deltaTime);
+            updatePlayer(clampedDeltaTime);
 
             renderer.render(scene, camera);
         }
@@ -381,7 +391,7 @@
                 const mag = Math.sqrt(dx * dx + dy * dy);
                 if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
                 
-                // Mapeamento: x = horizontal, z = vertical (o -dy inverte a direção da tela para a convenção 3D)
+                // Mapeamento: x = horizontal, z = vertical. O -dy está correto para a convenção 3D
                 callback({ x: dx / 50, z: -dy / 50 }); 
                 inner.style.transform = `translate(${dx}px, ${dy}px)`;
             }, false);
