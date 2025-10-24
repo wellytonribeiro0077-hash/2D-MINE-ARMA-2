@@ -3,11 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Chão com Textura)</title>
+    <title>Mini Standoff 2 3D (Menu Principal)</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        /* Estilos dos Joysticks (mantidos) */
+
+        /* --- Estilos do Menu Principal --- */
+        #main-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8); /* Fundo escuro semitransparente */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20; /* Garantir que o menu fique sobre o jogo 3D e joysticks */
+        }
+
+        .menu-button {
+            background-color: #fff;
+            color: #000;
+            border: none;
+            padding: 15px 50px;
+            margin: 15px 0;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 300px;
+            text-align: center;
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); /* Forma hexagonal inspirada na imagem */
+            transition: background-color 0.2s, color 0.2s, transform 0.1s;
+        }
+
+        .menu-button:hover {
+            background-color: #FFD700; /* Dourado */
+            color: #222;
+            transform: scale(1.05);
+        }
+        
+        /* --- Estilos dos Joysticks (mantidos) --- */
         .joystick {
             position: absolute;
             bottom: 50px;
@@ -16,7 +53,7 @@
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.2);
             touch-action: manipulation;
-            display: flex;
+            display: none; /* Inicia escondido */
             justify-content: center;
             align-items: center;
             z-index: 10;
@@ -30,14 +67,26 @@
         }
         #joystick-left { left: 50px; }
         #joystick-right { right: 50px; }
+
+        /* Mostrar joysticks apenas em telas pequenas e quando o jogo estiver ativo */
+        @media (max-width: 800px) {
+            #game-container.active .joystick { display: flex; }
+        }
         @media (min-width: 801px) {
-            .joystick { display: none; }
+            .joystick { display: none !important; }
         }
     </style>
 </head>
 <body>
     <div id="game-container">
         </div>
+    
+    <div id="main-menu">
+        <button class="menu-button" onclick="startGame()">JOGAR</button>
+        <button class="menu-button" onclick="showOptions()">OPÇÕES</button>
+        <button class="menu-button" onclick="exitGame()">SAIR</button>
+    </div>
+
     <div class="joystick" id="joystick-left"><div class="joystick-inner" id="left-inner"></div></div>
     <div class="joystick" id="joystick-right"><div class="joystick-inner" id="right-inner"></div></div>
 
@@ -48,20 +97,51 @@
         let scene, camera, renderer;
         let playerMesh, enemyMesh;
         const container = document.getElementById('game-container');
+        const mainMenu = document.getElementById('main-menu');
+        const leftJoystick = document.getElementById('joystick-left');
+        const rightJoystick = document.getElementById('joystick-right');
+        
+        let gameRunning = false; // Estado do jogo
+        
         let move = { x: 0, z: 0 };
         let shoot = { x: 0, z: 0 };
         const keys = { w: false, s: false, a: false, d: false, up: false, down: false, left: false, right: false };
         let playerSpeed = 0.05;
 
-        // URL da sua textura de grama.
-        // **SUBSTITUA ESTA URL PELA SUA IMAGEM HOSPEDADA:**
-        // (Use um link direto para um arquivo .jpg ou .png)
-        const GRASS_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif'; // Textura placeholder simples
+        // Parâmetros da Câmera em Terceira Pessoa
+        const CAMERA_DISTANCE = 3; 
+        const CAMERA_HEIGHT = 1.5; 
 
-        // Vamos usar uma cor verde sólida mais próxima da sua imagem (se o carregamento da textura falhar ou for muito complexo)
-        const SOLID_GREEN_COLOR = 0x6AA84F; // Verde esmeralda escuro
+        const GRASS_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif';
+        const SOLID_GREEN_COLOR = 0x6AA84F; 
 
-        // --- Funções de Inicialização ---
+        // --- Funções de Menu e Estado ---
+
+        function startGame() {
+            // 1. Esconder Menu
+            mainMenu.style.display = 'none';
+            
+            // 2. Mostrar Controles (Se for móvel)
+            leftJoystick.style.display = 'flex';
+            rightJoystick.style.display = 'flex';
+            
+            // 3. Iniciar o Jogo
+            gameRunning = true;
+            animate(0); // Iniciar o loop de renderização 3D
+            console.log("Jogo Iniciado!");
+        }
+        
+        function showOptions() {
+            alert("Opções: Funcionalidade a ser implementada!");
+        }
+
+        function exitGame() {
+            alert("Sair: Voltando ao Menu Principal (simulação de saída).");
+            // Em um ambiente de desktop, o código tentaria fechar a janela, mas isso é bloqueado por navegadores modernos.
+            // Para o nosso caso, apenas exibimos uma mensagem e mantemos o menu.
+        }
+
+        // --- Funções de Inicialização 3D ---
 
         function init() {
             // 1. Cena
@@ -71,8 +151,7 @@
             // 2. Câmera
             const aspectRatio = window.innerWidth / window.innerHeight;
             camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
-            camera.position.set(0, 10, 0);
-            camera.lookAt(0, 0, 0);
+            camera.position.set(0, CAMERA_HEIGHT, CAMERA_DISTANCE); 
 
             // 3. Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -86,41 +165,29 @@
             directionalLight.position.set(5, 5, 5);
             scene.add(directionalLight);
 
-            // 5. Adicionar Objetos
-
-            // --- CHÃO COM TEXTURA ---
+            // 5. Adicionar Objetos (Chão)
             const floorGeometry = new THREE.PlaneGeometry(20, 20);
             let floorMaterial;
-
-            // Tenta carregar a textura
             const textureLoader = new THREE.TextureLoader();
             textureLoader.load(GRASS_TEXTURE_URL,
-                // Função de sucesso
                 function (texture) {
-                    // Configura a textura para se repetir
                     texture.wrapS = THREE.RepeatWrapping;
                     texture.wrapT = THREE.RepeatWrapping;
-                    texture.repeat.set(5, 5); // Repete 5 vezes no X e 5 no Z (para cobrir 20x20)
-
-                    // Cria o material usando a textura
+                    texture.repeat.set(5, 5);
                     const texturedMaterial = new THREE.MeshStandardMaterial({ map: texture, side: THREE.DoubleSide });
                     floor.material = texturedMaterial;
                 },
-                // Função de progresso (opcional)
                 undefined,
-                // Função de erro (fallback para cor sólida)
                 function (err) {
                     console.error('Erro ao carregar a textura de grama. Usando cor verde sólida.', err);
                     floor.material = new THREE.MeshStandardMaterial({ color: SOLID_GREEN_COLOR, side: THREE.DoubleSide });
                 }
             );
 
-            // Material inicial (cor sólida de fallback até a textura carregar)
             floorMaterial = new THREE.MeshStandardMaterial({ color: SOLID_GREEN_COLOR, side: THREE.DoubleSide });
             const floor = new THREE.Mesh(floorGeometry, floorMaterial);
             floor.rotation.x = Math.PI / 2;
             scene.add(floor);
-            // -------------------------
 
             // Jogador (Um cilindro como corpo)
             const playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.0, 32);
@@ -143,7 +210,7 @@
             joystick("joystick-right", v => shoot = { x: v.x, z: v.y });
         }
 
-        // --- Resto das Funções (updatePlayer, animate, onKeyDown, etc.) permaneceu inalterado ---
+        // --- Funções de Jogo 3D (Mantidas) ---
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -184,12 +251,23 @@
             if (shootX !== 0 || shootZ !== 0) {
                 playerMesh.rotation.y = Math.atan2(shootX, shootZ);
             }
+            
+            // Lógica da Câmera em Terceira Pessoa
+            const angle = playerMesh.rotation.y;
+            const targetX = playerMesh.position.x - Math.sin(angle) * CAMERA_DISTANCE;
+            const targetZ = playerMesh.position.z - Math.cos(angle) * CAMERA_DISTANCE;
+            const smoothingFactor = 0.1; 
+            
+            camera.position.x += (targetX - camera.position.x) * smoothingFactor * deltaTime;
+            camera.position.z += (targetZ - camera.position.z) * smoothingFactor * deltaTime;
+            camera.position.y = playerMesh.position.y + CAMERA_HEIGHT; 
 
-            camera.position.x = playerMesh.position.x;
-            camera.position.z = playerMesh.position.z;
+            camera.lookAt(playerMesh.position.x, playerMesh.position.y + 0.5, playerMesh.position.z);
         }
 
         function animate(time) {
+            if (!gameRunning) return; // Parar o loop se o jogo não estiver rodando
+
             requestAnimationFrame(animate);
 
             const deltaTime = (time - (animate.lastTime || time)) / 16.67;
@@ -200,7 +278,10 @@
             renderer.render(scene, camera);
         }
 
+        // --- Funções de Controle (Mantidas) ---
+
         function onKeyDown(e) {
+            if (!gameRunning) return; // Ignorar input se o menu estiver aberto
             if (e.key === 'w' || e.key === 'W') keys.w = true;
             if (e.key === 's' || e.key === 'S') keys.s = true;
             if (e.key === 'a' || e.key === 'A') keys.a = true;
@@ -211,6 +292,7 @@
             if (e.key === 'ArrowRight') keys.right = true;
         }
         function onKeyUp(e) {
+            if (!gameRunning) return; // Ignorar input se o menu estiver aberto
             if (e.key === 'w' || e.key === 'W') keys.w = false;
             if (e.key === 's' || e.key === 'S') keys.s = false;
             if (e.key === 'a' || e.key === 'A') keys.a = false;
@@ -247,9 +329,10 @@
             });
         }
 
-        // Inicia o jogo 3D
+        // Inicia a cena 3D, mas deixa o loop 'animate' parado até o menu ser clicado
         init();
-        animate();
+        // O jogo está parado (gameRunning = false) e o menu está visível.
+        // Ao clicar em 'JOGAR', a função startGame() será chamada e ativará o animate().
     </script>
 </body>
 </html>
