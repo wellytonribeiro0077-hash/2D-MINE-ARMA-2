@@ -3,8 +3,10 @@ let scene, camera, renderer;
 let playerMesh;
 const container = document.getElementById('game-container');
 const mainMenu = document.getElementById('main-menu');
-const leftJoystick = document.getElementById('joystick-left');
-const cameraArea = document.getElementById('camera-area');
+// MUDANÇA: Referencia o novo ID do joystick ('joystick-right')
+const rightJoystick = document.getElementById('joystick-right'); 
+// A área de câmera continua com o ID 'camera-area' mas agora está à esquerda
+const cameraArea = document.getElementById('camera-area'); 
 const jumpButton = document.getElementById('jump-button');
 const crosshair = document.getElementById('crosshair'); 
 
@@ -57,13 +59,13 @@ function isMobileDevice() {
 function startGame() {
     mainMenu.style.display = 'none';
     
-    // LÓGICA DE VISIBILIDADE DOS BOTÕES
+    // LÓGICA DE VISIBILIDADE DOS BOTÕES (Correta)
     if (isMobileDevice()) {
-         leftJoystick.style.display = 'flex'; 
-         jumpButton.style.display = 'flex';   
-         cameraArea.style.display = 'block';  
+         rightJoystick.style.display = 'flex'; // Joystick de MOVIMENTO (Direita)
+         jumpButton.style.display = 'flex';    // Botão PULAR (Esquerda)
+         cameraArea.style.display = 'block';   // Área de rotação da câmera (Esquerda)
     } else {
-         leftJoystick.style.display = 'none';
+         rightJoystick.style.display = 'none';
          jumpButton.style.display = 'none';
          cameraArea.style.display = 'none';
     }
@@ -91,7 +93,7 @@ function handleJumpButton(event) {
      event.preventDefault(); 
 }
 
-// --- Controle de Câmera por Toque (Mobile) ---
+// --- Controle de Câmera por Toque (Mobile - AGORA NA ESQUERDA) ---
 function handleTouchStart(event) {
     if (!gameRunning) return;
     isRotating = true;
@@ -181,8 +183,8 @@ function init() {
     window.addEventListener('resize', onWindowResize);
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
-    // Inicializa o joystick e envia o movimento para a variável 'move'
-    joystick("joystick-left", v => move = { x: v.x, z: v.y });
+    // MUDANÇA: Chamada do joystick com ID do lado direito e o novo raio máximo
+    joystick("joystick-right", "right-inner", v => move = { x: v.x, z: v.y });
     
     document.addEventListener('mousemove', handleMouseMove, false);
 }
@@ -225,9 +227,8 @@ function updatePlayer(deltaTime) {
         inputZ = 0;
     }
 
-    // 2. ROTAÇÃO DO MOVIMENTO (CORREÇÃO DE INVERSÃO)
-    // O movimento é orientado pela câmera (playerMesh.rotation.y).
-    const forwardInput = -inputZ; // Inversão para Three.js: -Z é para frente
+    // 2. ROTAÇÃO DO MOVIMENTO (MOVIMENTO ORIENTADO PELA CÂMERA)
+    const forwardInput = -inputZ; // Inversão padrão para Three.js: -Z é para frente
     const sideInput = inputX;
 
     // Aplica a rotação da câmera ao vetor de movimento (trigonometria)
@@ -319,9 +320,10 @@ function onKeyUp(e) {
 
 // --- Funções do Joystick (Mobile) ---
 
-function joystick(id, callback) {
+// MUDANÇA NA ASSINATURA: Adiciona idInner
+function joystick(id, idInner, callback) {
     const stick = document.getElementById(id);
-    const inner = document.getElementById(id + '-inner');
+    const inner = document.getElementById(idInner); // AGORA USA idInner
     let rect = stick.getBoundingClientRect();
     let center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     let active = false;
@@ -351,17 +353,17 @@ function joystick(id, callback) {
         let dx = e.clientX - center.x;
         let dy = e.clientY - center.y;
         const mag = Math.sqrt(dx * dx + dy * dy);
-        const maxRadius = 50; 
+        const maxRadius = 75; // NOVO RAIO MÁXIMO (Quadrado de 150x150)
         
         if (mag > maxRadius) { 
             dx = (dx / mag) * maxRadius; 
             dy = (dy / mag) * maxRadius; 
         }
         
-        // CORREÇÃO FINAL DOS EIXOS: Troca X e Z.
-        // X (lateral) recebe o valor vertical invertido (-dy)
-        // Z (frente/trás) recebe o valor horizontal (dx)
-        callback({ x: -dy / maxRadius, z: dx / maxRadius }); 
+        // CORREÇÃO FINAL DE EIXOS: 
+        // x (lateral) = dy (vertical do dedo)
+        // z (frente/trás) = -dx (horizontal do dedo, invertido)
+        callback({ x: dy / maxRadius, z: -dx / maxRadius }); 
         inner.style.transform = `translate(${dx}px, ${dy}px)`;
     }, false);
     
