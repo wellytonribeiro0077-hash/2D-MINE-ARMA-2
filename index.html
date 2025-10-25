@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Velocidade 0.05 e Estabilidade)</title>
+    <title>Mini Standoff 2 3D (Coordenadas Ativas)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -59,7 +59,7 @@
         
         #joystick-left { 
             left: 50px; 
-            /* URL DA IMAGEM DO USUÁRIO INSERIDA AQUI */
+            /* URL DA IMAGEM DO USUÁRIO */
             background-image: url('https://png.pngtree.com/png-clipart/20230806/original/pngtree-game-controller-button-game-graphics-game-asset-control-vector-picture-image_9947922.png'); 
             background-size: cover;
             background-position: center;
@@ -86,6 +86,22 @@
             touch-action: none; 
         }
 
+        /* --- NOVO: Display de Coordenadas --- */
+        #coords-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: #00FF00; /* Verde néon para destaque */
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            z-index: 15;
+            display: none; /* Esconder no menu inicial */
+        }
+
+
         @media (max-width: 800px) {
             #game-container.active .joystick { display: flex; }
             #camera-area { display: block; } 
@@ -110,6 +126,10 @@
     
     <div id="camera-area"></div> 
 
+    <div id="coords-display">
+        X: 0.00 | Y: 0.00 | Z: 0.00
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
@@ -120,6 +140,7 @@
         const mainMenu = document.getElementById('main-menu');
         const leftJoystick = document.getElementById('joystick-left');
         const cameraArea = document.getElementById('camera-area');
+        const coordsDisplay = document.getElementById('coords-display'); // Referência ao novo elemento
         
         let gameRunning = false;
         
@@ -127,10 +148,9 @@
         
         const keys = { w: false, s: false, a: false, d: false };
         
-        // NOVO AJUSTE: Voltando a velocidade para 0.05
-        let playerSpeed = 0.05; 
-        // Sensibilidade de rotação mantida
+        let playerSpeed = 0.01; 
         let cameraRotationSpeed = 0.003; 
+        const WORLD_BOUNDS = 10; 
 
         // Estado do toque na área de rotação
         let isRotating = false;
@@ -149,6 +169,7 @@
         function startGame() {
             mainMenu.style.display = 'none';
             leftJoystick.style.display = 'flex';
+            coordsDisplay.style.display = 'block'; // Mostrar coordenadas ao iniciar
             
             cameraArea.addEventListener('touchstart', handleTouchStart, false);
             cameraArea.addEventListener('touchmove', handleTouchMove, false);
@@ -262,7 +283,7 @@
             }
         }
 
-        // --- Funções de Jogo 3D (Update com controles estáveis) ---
+        // --- Funções de Jogo 3D (Update com controles estáveis e limites) ---
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -276,7 +297,6 @@
             if (keys.a || keys.d || keys.w || keys.s || move.x !== 0 || move.z !== 0) {
                 const rotationAngle = playerMesh.rotation.y;
                 
-                // Input baseado em teclado/joystick 
                 let inputX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + move.x;
                 let inputZ = (keys.s ? 1 : 0) - (keys.w ? 1 : 0) - move.z; 
                 
@@ -291,17 +311,24 @@
                 dx = inputX * Math.cos(rotationAngle) - inputZ * Math.sin(rotationAngle);
                 dz = inputX * Math.sin(rotationAngle) + inputZ * Math.cos(rotationAngle);
             }
+            
+            // Calcula o novo movimento
+            const deltaX = dx * playerSpeed * deltaTime;
+            const deltaZ = dz * playerSpeed * deltaTime;
 
-            // Aplica o movimento * PlayerSpeed * deltaTime (para estabilidade)
-            playerMesh.position.x += dx * playerSpeed * deltaTime;
-            playerMesh.position.z += dz * playerSpeed * deltaTime;
+            // Aplica o movimento
+            playerMesh.position.x += deltaX;
+            playerMesh.position.z += deltaZ;
+
+            // Limites de Tela (Boundaries)
+            playerMesh.position.x = Math.min(Math.max(playerMesh.position.x, -WORLD_BOUNDS), WORLD_BOUNDS);
+            playerMesh.position.z = Math.min(Math.max(playerMesh.position.z, -WORLD_BOUNDS), WORLD_BOUNDS);
             
             // Lógica da Câmera em Terceira Pessoa
             const angle = playerMesh.rotation.y;
             const targetX = playerMesh.position.x - Math.sin(angle) * CAMERA_DISTANCE;
             const targetZ = playerMesh.position.z - Math.cos(angle) * CAMERA_DISTANCE;
             
-            // Smoothing de Câmera
             const smoothingFactor = 0.5; 
             
             // Movimento suave da câmera
@@ -311,6 +338,10 @@
 
             // A câmera sempre olha para o jogador
             camera.lookAt(playerMesh.position.x, playerMesh.position.y + 0.5, playerMesh.position.z);
+
+            // NOVO: Atualiza o Display de Coordenadas
+            coordsDisplay.textContent = 
+                `X: ${playerMesh.position.x.toFixed(2)} | Y: ${playerMesh.position.y.toFixed(2)} | Z: ${playerMesh.position.z.toFixed(2)}`;
         }
 
         function animate(time) {
@@ -387,7 +418,6 @@
                 const mag = Math.sqrt(dx * dx + dy * dy);
                 if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
                 
-                // Mapeamento: x = horizontal, z = vertical. O -dy está correto.
                 callback({ x: dx / 50, z: -dy / 50 }); 
                 inner.style.transform = `translate(${dx}px, ${dy}px)`;
             }, false);
