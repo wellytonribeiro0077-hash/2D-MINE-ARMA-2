@@ -1,20 +1,47 @@
-/* --- Joystick Analógico (Mobile - Lado Direito) --- */
+body { 
+    margin: 0; 
+    overflow: hidden; 
+    background-color: #000; 
+    font-family: 'Arial', sans-serif; 
+}
+#game-container { 
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+}
+
+/* --- Menu principal --- */
+#main-menu {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20;
+}
+.menu-button {
+    background-color: #fff; color: #000; border: none; padding: 15px 50px; margin: 15px 0;
+    font-size: 24px; font-weight: bold; cursor: pointer; width: 300px; text-align: center;
+    clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); transition: background-color 0.2s, transform 0.1s;
+}
+.menu-button:hover { 
+    background-color: #FFD700; 
+    transform: scale(1.05); 
+}
+
+/* --- Joystick Analógico (AGORA NO LADO DIREITO - QUADRADO) --- */
 .joystick {
     position: absolute; 
     bottom: 30px; 
-    /* MUDANÇA: Alinha à DIREITA */
-    right: 30px; 
-    left: auto; /* Remove a propriedade left antiga */
-    
-    width: 150px; 
-    height: 150px; 
+    right: 30px; /* POSICIONAMENTO: Direita */
+    left: auto;
+    width: 150px; /* Tamanho do Quadrado */
+    height: 150px;
     touch-action: manipulation; 
     display: none; 
     justify-content: center; align-items: center; 
     z-index: 10;
     
-    /* Formato Quadrado */
-    border-radius: 5px; 
+    border-radius: 5px; /* Formato Quadrado */
     background-color: rgba(0, 0, 0, 0.4); 
     border: 2px solid rgba(255, 255, 255, 0.4);
 }
@@ -25,14 +52,11 @@
     position: absolute;
 }
 
-/* --- Botão de Pular (Mobile) --- 
-   Vou mover este botão para o canto inferior ESQUERDO para não colidir com o novo joystick
-*/
+/* --- Botão de Pular (AGORA NO LADO ESQUERDO) --- */
 #jump-button {
     position: absolute; 
     bottom: 50px; 
-    /* MUDANÇA: Alinha à ESQUERDA */
-    left: 50px; 
+    left: 50px; /* POSICIONAMENTO: Esquerda */
     right: auto;
     
     width: 80px; height: 80px; border-radius: 50%;
@@ -44,13 +68,16 @@
     touch-action: manipulation; z-index: 10;
     cursor: pointer;
 }
+#jump-button:active {
+    background-color: rgba(0, 100, 200, 0.8);
+    transform: scale(0.95);
+}
 
 /* --- Área de Rotação da Câmera (AGORA NO LADO ESQUERDO) --- */
 #camera-area {
     position: absolute; 
-    /* MUDANÇA: Alinha à ESQUERDA */
-    left: 0; 
-    right: auto; 
+    left: 0; /* POSICIONAMENTO: Esquerda */
+    right: auto;
     
     top: 0; width: 50%; height: 100%;
     z-index: 5; 
@@ -58,4 +85,14 @@
     touch-action: none; 
 }
 
-/* ... (O restante do CSS permanece o mesmo) ... */
+/* --- MIRA CENTRAL (Crosshair) --- */
+#crosshair {
+    position: absolute; top: 50%; left: 50%; 
+    width: 4px; height: 4px; 
+    background-color: red; 
+    border: 1px solid white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%); 
+    z-index: 15;
+    display: none; 
+}
