@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Standoff 2 Lite - Movimento por Setas</title>
+    <title>Standoff 2 Lite - Comandos de Movimento Corrigidos</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        /* --- Menu principal (Mantido) --- */
+        /* --- Menu principal --- */
         #main-menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.8);
@@ -29,10 +29,10 @@
         #joystick-left { 
             left: 50px; 
             border-radius: 50%;
-            /* Usando a imagem de controle que você forneceu para o fundo do analógico (apenas visual) */
+            /* Usando a imagem de controle para o fundo do analógico */
             background-image: url('https://www.pngitem.com/pimgs/m/19-198125_game-controller-buttons-png-transparent-png.png'); 
             background-size: cover; 
-            background-color: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente */
+            background-color: rgba(0, 0, 0, 0.5); 
             border: 2px solid rgba(255, 255, 255, 0.3);
         }
         .joystick-inner {
@@ -120,15 +120,15 @@
         
         let gameRunning = false;
         
-        let move = { x: 0, z: 0 }; // Movimento do Joystick (Mobile)
+        let move = { x: 0, z: 0 }; 
         
-        // ** NOVOS OBJETOS DE TECLAS (APENAS SETAS E ESPAÇO) **
+        // Controles de Seta e Pulo
         const keys = { 
-            up: false,    // Seta para Cima
-            down: false,  // Seta para Baixo
-            left: false,  // Seta para Esquerda
-            right: false, // Seta para Direita
-            space: false  // Barra de Espaço (Pulo)
+            up: false,    
+            down: false,  
+            left: false,  
+            right: false, 
+            space: false  
         };
         
         let playerSpeed = 5.0; 
@@ -149,7 +149,7 @@
         const CAMERA_DISTANCE = 3; 
         const CAMERA_HEIGHT = 1.5; 
 
-        // Textura temporária (Personagem)
+        // URL da caixa (Para evitar o problema da sua URL .webp que estava dando erro)
         const PLAYER_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif'; 
         const GRASS_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif';
         const SOLID_GREEN_COLOR = 0x6AA84F; 
@@ -202,7 +202,7 @@
             const currentX = event.touches[0].clientX;
             const deltaX = currentX - lastTouchX;
             
-            // Rotaciona o boneco (que leva a câmera)
+            // Rotação: Gira o boneco (que leva a câmera)
             playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
             
             lastTouchX = currentX;
@@ -252,12 +252,13 @@
             });
 
 
-            // 2. PERSONAGEM
-            const playerGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.8); // Altura: 1.6m
+            // 2. PERSONAGEM (Caixa)
+            const playerGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.8); 
             playerMesh = new THREE.Mesh(playerGeometry, new THREE.MeshStandardMaterial({ color: 0x00ff00 }));
-            playerMesh.position.set(0, 0.8, 0); // Altura inicial: 0.8 (metade da altura)
+            playerMesh.position.set(0, 0.8, 0); 
             scene.add(playerMesh);
 
+            // Carrega a textura da caixa (crate.gif)
             textureLoader.load(
                 PLAYER_TEXTURE_URL, 
                 texture => {
@@ -288,12 +289,11 @@
         function handleMouseMove(event) {
             if (!gameRunning || window.innerWidth <= 800) return; 
             
-            // Rotação da câmera controlada pelo movimento do mouse
             const deltaX = event.movementX || 0;
             playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
         }
 
-        // --- Funções de Jogo 3D (Update com Controles Estáveis e Física) ---
+        // --- Funções de Jogo 3D (Update com Controles e Física) ---
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -305,12 +305,12 @@
             let dx = 0, dz = 0;
             const rotationAngle = playerMesh.rotation.y;
             
-            // 1. COMBINAÇÃO DE INPUTS (Setas no Desktop, Joystick no Mobile)
+            // 1. COMBINAÇÃO DE INPUTS 
             
-            // Input Horizontal: Seta Esquerda/Direita + Joystick X
+            // Input Horizontal (Esquerda/Direita)
             let inputX = (keys.right ? 1 : 0) - (keys.left ? 1 : 0) + move.x;
             
-            // Input Vertical: Seta Cima/Baixo + Joystick Z
+            // Input Vertical (Frente/Trás)
             let inputZ = (keys.up ? 1 : 0) - (keys.down ? 1 : 0) + move.z; 
             
             inputX = parseFloat(inputX) || 0;
@@ -327,12 +327,21 @@
                 inputZ = 0;
             }
 
-            // 2. ROTAÇÃO DO MOVIMENTO (CORREÇÃO DE INVERSÃO)
-            // Z negativo é 'frente' no Three.js. Invertemos inputZ para que 'Cima' vá para 'Frente'.
-            const fixedInputZ = -inputZ; 
+            // 2. ROTAÇÃO DO MOVIMENTO (CORREÇÃO FINAL DE INVERSÃO)
             
-            dx = inputX * Math.cos(rotationAngle) - fixedInputZ * Math.sin(rotationAngle);
-            dz = inputX * Math.sin(rotationAngle) + fixedInputZ * Math.cos(rotationAngle);
+            // 'inputZ' positivo significa Mover para Frente.
+            // Para compensar a convenção do Three.js (-Z = Frente), invertemos inputZ.
+            const forwardInput = -inputZ; 
+            const sideInput = inputX;
+
+            // Transforma o movimento local (forward/side) em movimento mundial (dx/dz)
+            // Esta é a fórmula padrão de rotação.
+            dx = sideInput * Math.cos(rotationAngle) - forwardInput * Math.sin(rotationAngle);
+            dz = sideInput * Math.sin(rotationAngle) + forwardInput * Math.cos(rotationAngle);
+            
+            // Se o movimento horizontal ainda estiver invertido, inverta sideInput:
+            // dx = -sideInput * Math.cos(rotationAngle) - forwardInput * Math.sin(rotationAngle);
+            // dz = -sideInput * Math.sin(rotationAngle) + forwardInput * Math.cos(rotationAngle);
             
             const speed = isNaN(playerSpeed) ? 5.0 : playerSpeed; 
             const safeDeltaTime = Math.min(deltaTime, 0.1); 
@@ -342,20 +351,16 @@
             playerMesh.position.z += dz * speed * safeDeltaTime;
 
             // 3. FÍSICA (Gravidade e Pulo)
-            
-            // Pulo (Teclado)
             if (keys.space && isOnGround) {
                 playerVelocityY = JUMP_POWER;
                 isOnGround = false;
             }
 
-            // Aplica Gravidade
             if (!isOnGround) {
                 playerVelocityY -= GRAVITY * safeDeltaTime;
                 playerMesh.position.y += playerVelocityY * safeDeltaTime;
             }
 
-            // Colisão com o Chão (Y=0.8 é a posição de repouso da caixa de 1.6m de altura)
             const groundLevel = 0.8;
             if (playerMesh.position.y < groundLevel) {
                 playerVelocityY = 0;
@@ -363,7 +368,7 @@
                 isOnGround = true;
             }
 
-            // Limites de Tela (Boundaries)
+            // Limites de Tela
             playerMesh.position.x = Math.min(Math.max(playerMesh.position.x, -WORLD_BOUNDS), WORLD_BOUNDS);
             playerMesh.position.z = Math.min(Math.max(playerMesh.position.z, -WORLD_BOUNDS), WORLD_BOUNDS);
             
@@ -409,7 +414,6 @@
                 if (e.key === 'ArrowLeft') keys.left = true;
                 if (e.key === 'ArrowRight') keys.right = true;
                 
-                // Tecla de Pulo (Espaço)
                 if (e.key === ' ' || e.key === 'Spacebar') keys.space = true;
             }
         }
@@ -432,7 +436,6 @@
             let center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
             let active = false;
 
-            // Função para resetar o joystick
             const resetStick = () => {
                 active = false; 
                 callback({ x: 0, z: 0 }); 
@@ -460,9 +463,7 @@
                 const mag = Math.sqrt(dx * dx + dy * dy);
                 if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
                 
-                // x: Horizontal
-                // z: Vertical. -dy/50 garante que mover o dedo para CIMA (dy negativo) 
-                // resulta em um valor positivo para 'frente'.
+                // -dy/50 faz 'CIMA' (dy negativo) resultar em um valor positivo para 'frente' (inputZ)
                 callback({ x: dx / 50, z: -dy / 50 }); 
                 inner.style.transform = `translate(${dx}px, ${dy}px)`;
             }, false);
