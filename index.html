@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Standoff 2 Lite - Configuração de Controles</title>
+    <title>Standoff 2 Lite - Movimento por Setas</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -21,7 +21,7 @@
         }
         .menu-button:hover { background-color: #FFD700; transform: scale(1.05); }
 
-        /* --- Joystick Analógico (Lado Esquerdo) --- */
+        /* --- Joystick Analógico (Mobile - Lado Esquerdo) --- */
         .joystick {
             position: absolute; bottom: 50px; width: 120px; height: 120px;
             touch-action: manipulation; display: none; justify-content: center; align-items: center; z-index: 10;
@@ -29,17 +29,19 @@
         #joystick-left { 
             left: 50px; 
             border-radius: 50%;
-            background-image: url('https://www.pngwing.com/pt/free-png-nagxd'); 
+            /* Usando a imagem de controle que você forneceu para o fundo do analógico (apenas visual) */
+            background-image: url('https://www.pngitem.com/pimgs/m/19-198125_game-controller-buttons-png-transparent-png.png'); 
             background-size: cover; 
-            background-color: transparent; 
+            background-color: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente */
+            border: 2px solid rgba(255, 255, 255, 0.3);
         }
         .joystick-inner {
             width: 40px; height: 40px; border-radius: 50%;
-            background: rgba(255, 255, 255, 0.7); 
+            background: rgba(255, 255, 255, 0.8); 
             position: absolute;
         }
         
-        /* --- Botão de Pular (Jump) --- */
+        /* --- Botão de Pular (Mobile - Lado Direito) --- */
         #jump-button {
             position: absolute; bottom: 50px; right: 50px;
             width: 80px; height: 80px; border-radius: 50%;
@@ -55,17 +57,17 @@
             transform: scale(0.95);
         }
 
-        /* --- Área de Rotação da Câmera (Lado Direito) --- */
+        /* --- Área de Rotação da Câmera (Mobile - Lado Direito) --- */
         #camera-area {
             position: absolute; right: 0; top: 0; width: 50%; height: 100%;
             z-index: 5; touch-action: none; 
         }
 
-        /* --- MIRA CENTRAL (Crosshair - Ponto de Mira) --- */
+        /* --- MIRA CENTRAL (Crosshair) --- */
         #crosshair {
             position: absolute; top: 50%; left: 50%; 
             width: 4px; height: 4px; 
-            background-color: red; /* Cor clássica de mira */
+            background-color: red; 
             border: 1px solid white;
             border-radius: 50%;
             transform: translate(-50%, -50%); 
@@ -73,10 +75,11 @@
             display: none; 
         }
 
+        /* --- Visibilidade dos controles --- */
         @media (max-width: 800px) {
             #game-container.active .joystick { display: flex; }
             #camera-area { display: block; } 
-            #jump-button { display: flex; } /* Mostra o botão no mobile */
+            #jump-button { display: flex; } 
         }
         @media (min-width: 801px) {
              .joystick, #jump-button { display: none !important; }
@@ -117,9 +120,16 @@
         
         let gameRunning = false;
         
-        let move = { x: 0, z: 0 };
+        let move = { x: 0, z: 0 }; // Movimento do Joystick (Mobile)
         
-        const keys = { w: false, s: false, a: false, d: false, space: false };
+        // ** NOVOS OBJETOS DE TECLAS (APENAS SETAS E ESPAÇO) **
+        const keys = { 
+            up: false,    // Seta para Cima
+            down: false,  // Seta para Baixo
+            left: false,  // Seta para Esquerda
+            right: false, // Seta para Direita
+            space: false  // Barra de Espaço (Pulo)
+        };
         
         let playerSpeed = 5.0; 
         let cameraRotationSpeed = 0.003; 
@@ -139,7 +149,7 @@
         const CAMERA_DISTANCE = 3; 
         const CAMERA_HEIGHT = 1.5; 
 
-        // Textura temporária (Personagem) - Para evitar falhas com links externos
+        // Textura temporária (Personagem)
         const PLAYER_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif'; 
         const GRASS_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif';
         const SOLID_GREEN_COLOR = 0x6AA84F; 
@@ -156,7 +166,6 @@
             }
             crosshair.style.display = 'block'; 
             
-            // Adiciona listeners para o botão de pulo (mobile)
             jumpButton.addEventListener('pointerdown', handleJumpButton, false);
             
             cameraArea.addEventListener('touchstart', handleTouchStart, false);
@@ -179,7 +188,7 @@
              event.preventDefault(); 
         }
 
-        // --- Controle de Câmera por Toque (Lado Direito) ---
+        // --- Controle de Câmera por Toque (Mobile - Lado Direito) ---
         function handleTouchStart(event) {
             if (!gameRunning) return;
             isRotating = true;
@@ -243,7 +252,7 @@
             });
 
 
-            // 2. PERSONAGEM (Carrega a textura temporária)
+            // 2. PERSONAGEM
             const playerGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.8); // Altura: 1.6m
             playerMesh = new THREE.Mesh(playerGeometry, new THREE.MeshStandardMaterial({ color: 0x00ff00 }));
             playerMesh.position.set(0, 0.8, 0); // Altura inicial: 0.8 (metade da altura)
@@ -260,7 +269,7 @@
                 }
             );
 
-            // 3. INIMIGO (Mantido)
+            // 3. INIMIGO
             const enemyGeometry = new THREE.BoxGeometry(1, 1, 1);
             const enemyMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
             const enemyMesh = new THREE.Mesh(enemyGeometry, enemyMaterial);
@@ -279,7 +288,7 @@
         function handleMouseMove(event) {
             if (!gameRunning || window.innerWidth <= 800) return; 
             
-            // Simula a rotação da câmera, como no FPS
+            // Rotação da câmera controlada pelo movimento do mouse
             const deltaX = event.movementX || 0;
             playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
         }
@@ -296,15 +305,18 @@
             let dx = 0, dz = 0;
             const rotationAngle = playerMesh.rotation.y;
             
-            // 1. COMBINAÇÃO DE INPUTS (Corrigida)
-            // O sinal do joystick move.z já está corrigido na função joystick (-dy)
-            let inputX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + move.x;
-            let inputZ = (keys.w ? 1 : 0) - (keys.s ? 1 : 0) + move.z; 
+            // 1. COMBINAÇÃO DE INPUTS (Setas no Desktop, Joystick no Mobile)
+            
+            // Input Horizontal: Seta Esquerda/Direita + Joystick X
+            let inputX = (keys.right ? 1 : 0) - (keys.left ? 1 : 0) + move.x;
+            
+            // Input Vertical: Seta Cima/Baixo + Joystick Z
+            let inputZ = (keys.up ? 1 : 0) - (keys.down ? 1 : 0) + move.z; 
             
             inputX = parseFloat(inputX) || 0;
             inputZ = parseFloat(inputZ) || 0;
             
-            // Normaliza o vetor de movimento (para que o movimento diagonal não seja mais rápido)
+            // Normaliza o vetor de movimento
             const mag = Math.sqrt(inputX * inputX + inputZ * inputZ);
             
             if (mag > 0.001 && !isNaN(mag)) { 
@@ -315,10 +327,12 @@
                 inputZ = 0;
             }
 
-            // 2. ROTAÇÃO DO MOVIMENTO
-            // Transforma o movimento local (inputX, inputZ) em movimento mundial (dx, dz)
-            dx = inputX * Math.cos(rotationAngle) - inputZ * Math.sin(rotationAngle);
-            dz = inputX * Math.sin(rotationAngle) + inputZ * Math.cos(rotationAngle);
+            // 2. ROTAÇÃO DO MOVIMENTO (CORREÇÃO DE INVERSÃO)
+            // Z negativo é 'frente' no Three.js. Invertemos inputZ para que 'Cima' vá para 'Frente'.
+            const fixedInputZ = -inputZ; 
+            
+            dx = inputX * Math.cos(rotationAngle) - fixedInputZ * Math.sin(rotationAngle);
+            dz = inputX * Math.sin(rotationAngle) + fixedInputZ * Math.cos(rotationAngle);
             
             const speed = isNaN(playerSpeed) ? 5.0 : playerSpeed; 
             const safeDeltaTime = Math.min(deltaTime, 0.1); 
@@ -385,15 +399,15 @@
             renderer.render(scene, camera);
         }
 
-        // --- Funções de Controle (joystick e teclado) ---
+        // --- Funções de Controle (Setas e Pulo) ---
 
         function onKeyDown(e) {
             if (!gameRunning) return; 
             if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-                if (e.key === 'w' || e.key === 'W') keys.w = true;
-                if (e.key === 's' || e.key === 'S') keys.s = true;
-                if (e.key === 'a' || e.key === 'A') keys.a = true;
-                if (e.key === 'd' || e.key === 'D') keys.d = true;
+                if (e.key === 'ArrowUp') keys.up = true;
+                if (e.key === 'ArrowDown') keys.down = true;
+                if (e.key === 'ArrowLeft') keys.left = true;
+                if (e.key === 'ArrowRight') keys.right = true;
                 
                 // Tecla de Pulo (Espaço)
                 if (e.key === ' ' || e.key === 'Spacebar') keys.space = true;
@@ -401,13 +415,15 @@
         }
         function onKeyUp(e) {
             if (!gameRunning) return; 
-            if (e.key === 'w' || e.key === 'W') keys.w = false;
-            if (e.key === 's' || e.key === 'S') keys.s = false;
-            if (e.key === 'a' || e.key === 'A') keys.a = false;
-            if (e.key === 'd' || e.key === 'D') keys.d = false;
+            if (e.key === 'ArrowUp') keys.up = false;
+            if (e.key === 'ArrowDown') keys.down = false;
+            if (e.key === 'ArrowLeft') keys.left = false;
+            if (e.key === 'ArrowRight') keys.right = false;
             
             if (e.key === ' ' || e.key === 'Spacebar') keys.space = false;
         }
+
+        // --- Funções do Joystick (Mobile) ---
 
         function joystick(id, callback) {
             const stick = document.getElementById(id);
@@ -444,8 +460,9 @@
                 const mag = Math.sqrt(dx * dx + dy * dy);
                 if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
                 
-                // move.x: Deslocamento horizontal (eixo X no 3D)
-                // move.z: Deslocamento vertical. -dy/50 faz 'CIMA' (dy negativo na tela) ser 'FRENTE' (Z positivo ou negativo, dependendo da convenção, mas consistente com W/S).
+                // x: Horizontal
+                // z: Vertical. -dy/50 garante que mover o dedo para CIMA (dy negativo) 
+                // resulta em um valor positivo para 'frente'.
                 callback({ x: dx / 50, z: -dy / 50 }); 
                 inner.style.transform = `translate(${dx}px, ${dy}px)`;
             }, false);
@@ -459,4 +476,4 @@
         init();
     </script>
 </body>
-    </html>
+</html>
