@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Correção Final do NaN)</title>
+    <title>Mini Standoff 2 3D (Reforço Final Contra NaN)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -167,7 +167,7 @@
         
         const keys = { w: false, s: false, a: false, d: false };
         
-        // Ajuste de velocidade (um pouco mais que 0.01)
+        // Mantendo a velocidade em 0.02
         let playerSpeed = 0.02; 
         let cameraRotationSpeed = 0.003; 
         const WORLD_BOUNDS = 10; 
@@ -326,9 +326,15 @@
                 
                 // Normaliza o vetor de movimento
                 const mag = Math.sqrt(inputX * inputX + inputZ * inputZ);
-                if (mag > 0) {
+                
+                // NOVO REFORÇO: Verifica se mag é um número válido antes de usá-lo
+                if (mag > 0 && !isNaN(mag)) {
                     inputX /= mag;
                     inputZ /= mag;
+                } else {
+                    // Se mag for NaN ou 0, garante que o input de movimento seja 0 para evitar que dx/dz se torne NaN
+                    inputX = 0;
+                    inputZ = 0;
                 }
 
                 // Rotaciona o vetor de movimento para alinhar com a câmera (jogador)
@@ -337,8 +343,12 @@
             }
             
             // Calcula o novo movimento
-            const deltaX = dx * playerSpeed * deltaTime;
-            const deltaZ = dz * playerSpeed * deltaTime;
+            // NOVO REFORÇO: Verifica se playerSpeed e deltaTime são números válidos
+            const speed = isNaN(playerSpeed) ? 0.02 : playerSpeed;
+            const safeDeltaTime = isNaN(deltaTime) || deltaTime === 0 ? (1/60) : deltaTime;
+
+            const deltaX = dx * speed * safeDeltaTime;
+            const deltaZ = dz * speed * safeDeltaTime;
 
             // Aplica o movimento
             playerMesh.position.x += deltaX;
@@ -348,7 +358,7 @@
             playerMesh.position.x = Math.min(Math.max(playerMesh.position.x, -WORLD_BOUNDS), WORLD_BOUNDS);
             playerMesh.position.z = Math.min(Math.max(playerMesh.position.z, -WORLD_BOUNDS), WORLD_BOUNDS);
             
-            // Lógica da Câmera em Terceira Pessoa
+            // Lógica da Câmera em Terceira Pessoa (inalterada)
             const angle = playerMesh.rotation.y;
             const targetX = playerMesh.position.x - Math.sin(angle) * CAMERA_DISTANCE;
             const targetZ = playerMesh.position.z - Math.cos(angle) * CAMERA_DISTANCE;
@@ -373,27 +383,19 @@
 
             requestAnimationFrame(animate);
 
-            // CORREÇÃO: Usa performance.now() para calcular o tempo atual
             const currentTime = performance.now();
-            
-            // Garante que lastTime esteja definido para evitar NaN
             const lastTime = animate.lastTime || currentTime; 
             
             // DeltaTime em segundos (para estabilidade e consistência do FPS)
             const deltaTime = (currentTime - lastTime) / 1000; 
             
-            // Atualiza o lastTime
             animate.lastTime = currentTime;
             
             // Limita o deltaTime para evitar saltos (teletransporte)
             const clampedDeltaTime = Math.min(deltaTime, 0.1);
 
-            // Se o deltaTime for 0 ou NaN por algum motivo, forçamos um valor seguro
-            if (isNaN(clampedDeltaTime) || clampedDeltaTime === 0) {
-                 updatePlayer(1/60); // Assume 60 FPS se houver problema
-            } else {
-                 updatePlayer(clampedDeltaTime);
-            }
+            // Chamada da função de atualização com o deltaTime seguro
+            updatePlayer(clampedDeltaTime);
 
             renderer.render(scene, camera);
         }
