@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Versão Final c/ Analógico)</title>
+    <title>Mini Standoff 2 3D (Versão Final com Textura)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -59,10 +59,11 @@
         
         #joystick-left { 
             left: 50px; 
-            /* TRANSFORMA EM ANALÓGICO CIRCULAR */
+            /* ANALÓGICO CIRCULAR COM A IMAGEM DO USUÁRIO */
             border-radius: 50%;
-            background-color: rgba(0, 0, 0, 0.4); 
-            background-image: none; /* Remove a imagem do D-pad */
+            background-image: url('https://www.pngwing.com/pt/free-png-nagxd'); 
+            background-size: cover; 
+            background-color: transparent; 
         }
 
         .joystick-inner {
@@ -94,7 +95,7 @@
             background-color: black;
             border: 1px solid white;
             border-radius: 50%;
-            transform: translate(-50%, -50%); /* Centraliza perfeitamente */
+            transform: translate(-50%, -50%); 
             z-index: 15;
             display: none; 
         }
@@ -179,6 +180,13 @@
 
         const GRASS_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif';
         const SOLID_GREEN_COLOR = 0x6AA84F; 
+        
+        // **URL DO SEU PERSONAGEM**
+        // ATENÇÃO: O URL fornecido é de uma PÁGINA, não de uma IMAGEM.
+        // O Three.js precisa do link direto (ex: https://site.com/imagem.png).
+        // Substitua 'PLACEHOLDER_TEXTURE_URL' pelo link direto do seu PNG.
+        const PLACEHOLDER_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif'; 
+
 
         // --- Funções de Menu e Estado ---
 
@@ -246,6 +254,7 @@
             directionalLight.position.set(5, 5, 5);
             scene.add(directionalLight);
 
+            // 1. CHÃO
             const floorGeometry = new THREE.PlaneGeometry(20, 20);
             let floorMaterial;
             const textureLoader = new THREE.TextureLoader();
@@ -268,13 +277,41 @@
             const floor = new THREE.Mesh(floorGeometry, floorMaterial);
             floor.rotation.x = Math.PI / 2;
             scene.add(floor);
-
-            const playerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.0, 32);
-            const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-            playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
+            
+            // 2. PERSONAGEM (Inicial - Cilindro Verde)
+            // Este é um mesh temporário. Ele será substituído pela Caixa com textura.
+            const initialPlayerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.0, 32);
+            const initialPlayerMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+            playerMesh = new THREE.Mesh(initialPlayerGeometry, initialPlayerMaterial);
             playerMesh.position.set(0, 0.5, 0);
             scene.add(playerMesh);
 
+            // 3. TENTATIVA DE CARREGAR A TEXTURA DO PERSONAGEM (Assíncrono)
+            const loader = new THREE.TextureLoader();
+            loader.load(
+                PLACEHOLDER_TEXTURE_URL, 
+                function(texture) {
+                    // Cria uma geometria de caixa (Melhor para texturas de personagens)
+                    const newPlayerGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.8);
+                    // Aplica a textura
+                    const newPlayerMaterial = new THREE.MeshStandardMaterial({ map: texture });
+                    
+                    // Remove o mesh temporário (o cilindro)
+                    scene.remove(playerMesh);
+
+                    // Cria o novo mesh com a textura
+                    playerMesh = new THREE.Mesh(newPlayerGeometry, newPlayerMaterial);
+                    playerMesh.position.set(0, 0.8, 0); // Ajusta a altura (metade de 1.6)
+                    scene.add(playerMesh);
+                },
+                undefined,
+                function(err) {
+                    console.error(`Falha ao carregar a textura do personagem. Usando cilindro verde padrão.`);
+                    // Em caso de falha, mantemos o cilindro verde inicial.
+                }
+            );
+
+            // 4. INIMIGO (Mantido)
             const enemyGeometry = new THREE.BoxGeometry(1, 1, 1);
             const enemyMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
             enemyMesh = new THREE.Mesh(enemyGeometry, enemyMaterial);
@@ -315,12 +352,10 @@
                 
                 let inputX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + move.x;
                 
-                // **CORREÇÃO DA INVERSÃO:** Inverte a ordem das teclas W e S.
-                // Trocar (keys.s - keys.w) por (keys.w - keys.s). 
-                // move.z já está invertido na função joystick.
+                // CORREÇÃO DA INVERSÃO: W é para frente (eixo Z positivo), S é para trás (eixo Z negativo).
                 let inputZ = (keys.w ? 1 : 0) - (keys.s ? 1 : 0) + move.z; 
                 
-                // Reforço do Input (Garante que os valores não sejam Nan ou 0)
+                // Reforço do Input
                 inputX = parseFloat(inputX) || 0;
                 inputZ = parseFloat(inputZ) || 0;
                 
@@ -357,7 +392,7 @@
             playerMesh.position.x = Math.min(Math.max(playerMesh.position.x, -WORLD_BOUNDS), WORLD_BOUNDS);
             playerMesh.position.z = Math.min(Math.max(playerMesh.position.z, -WORLD_BOUNDS), WORLD_BOUNDS);
             
-            // Lógica da Câmera em Terceira Pessoa (inalterada)
+            // Lógica da Câmera em Terceira Pessoa 
             const angle = playerMesh.rotation.y;
             const targetX = playerMesh.position.x - Math.sin(angle) * CAMERA_DISTANCE;
             const targetZ = playerMesh.position.z - Math.cos(angle) * CAMERA_DISTANCE;
@@ -367,7 +402,8 @@
             // Movimento suave da câmera
             camera.position.x += (targetX - camera.position.x) * smoothingFactor;
             camera.position.z += (targetZ - camera.position.z) * smoothingFactor;
-            camera.position.y = playerMesh.position.y + CAMERA_HEIGHT; 
+            // Mantém a câmera acima do centro do mesh (playerMesh.position.y) + altura da câmera
+            camera.position.y = playerMesh.position.y + (playerMesh.geometry.parameters.height / 2) + CAMERA_HEIGHT; 
 
             // A câmera sempre olha para o jogador
             camera.lookAt(playerMesh.position.x, playerMesh.position.y + 0.5, playerMesh.position.z);
@@ -403,7 +439,6 @@
 
         function onKeyDown(e) {
             if (!gameRunning) return; 
-            // Garante que o foco esteja na janela do jogo para capturar as teclas
             if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
                 if (e.key === 'w' || e.key === 'W') keys.w = true;
                 if (e.key === 's' || e.key === 'S') keys.s = true;
@@ -429,7 +464,6 @@
             let center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
             let active = false;
 
-            // Usando 'pointer' events para melhor compatibilidade (mouse e toque)
             stick.addEventListener("pointerdown", e => { 
                 if (!gameRunning) return;
                 e.preventDefault(); 
@@ -456,9 +490,6 @@
                 const mag = Math.sqrt(dx * dx + dy * dy);
                 if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
                 
-                // move.z: dy/50 é o valor do input Y. 
-                // Se puxar para CIMA (direção Z positiva no mundo 3D), dy é NEGATIVO (em pixels na tela)
-                // Usando -dy/50 faz o input ser POSITIVO para a direção positiva do eixo Z (frente).
                 callback({ x: dx / 50, z: -dy / 50 }); 
                 inner.style.transform = `translate(${dx}px, ${dy}px)`;
             }, false);
