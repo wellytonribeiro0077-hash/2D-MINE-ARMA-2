@@ -226,11 +226,11 @@ function updatePlayer(deltaTime) {
     }
 
     // 2. ROTAÇÃO DO MOVIMENTO (CORREÇÃO DE INVERSÃO)
-    // Three.js: -Z é para frente. A inversão garante que 'inputZ' positivo vá para frente.
-    // Como a função joystick agora inverte o Y (z), o forwardInput faz o ajuste final.
-    const forwardInput = -inputZ; 
+    // O movimento é orientado pela câmera (playerMesh.rotation.y).
+    const forwardInput = -inputZ; // Inversão para Three.js: -Z é para frente
     const sideInput = inputX;
 
+    // Aplica a rotação da câmera ao vetor de movimento (trigonometria)
     dx = sideInput * Math.cos(rotationAngle) - forwardInput * Math.sin(rotationAngle);
     dz = sideInput * Math.sin(rotationAngle) + forwardInput * Math.cos(rotationAngle);
     
@@ -358,8 +358,8 @@ function joystick(id, callback) {
             dy = (dy / mag) * maxRadius; 
         }
         
-        // CORREÇÃO FINAL: Inverte 'dy' aqui para que o input do joystick 
-        // siga a lógica de "Dedo para cima = Z Positivo"
+        // CORREÇÃO FINAL: Inverte 'dy' para mapear corretamente o movimento da tela (Y)
+        // para o eixo Z (profundidade) do jogo.
         callback({ x: dx / maxRadius, z: -dy / maxRadius }); 
         inner.style.transform = `translate(${dx}px, ${dy}px)`;
     }, false);
