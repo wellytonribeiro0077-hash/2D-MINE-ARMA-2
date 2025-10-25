@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Standoff 2 Lite - Comandos de Movimento Corrigidos</title>
+    <title>Standoff 2 Lite - Comandos de Movimento Corrigidos (Mobile)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -24,7 +24,10 @@
         /* --- Joystick Analógico (Mobile - Lado Esquerdo) --- */
         .joystick {
             position: absolute; bottom: 50px; width: 120px; height: 120px;
-            touch-action: manipulation; display: none; justify-content: center; align-items: center; z-index: 10;
+            touch-action: manipulation; 
+            /* Por padrão, não mostramos. O JS decide se deve mostrar. */
+            display: none; 
+            justify-content: center; align-items: center; z-index: 10;
         }
         #joystick-left { 
             left: 50px; 
@@ -48,7 +51,9 @@
             background-color: rgba(0, 150, 255, 0.6);
             color: white; font-size: 20px; font-weight: bold;
             border: 3px solid rgba(255, 255, 255, 0.8);
-            display: none; justify-content: center; align-items: center;
+            /* Por padrão, não mostramos. O JS decide se deve mostrar. */
+            display: none; 
+            justify-content: center; align-items: center;
             touch-action: manipulation; z-index: 10;
             cursor: pointer;
         }
@@ -60,7 +65,10 @@
         /* --- Área de Rotação da Câmera (Mobile - Lado Direito) --- */
         #camera-area {
             position: absolute; right: 0; top: 0; width: 50%; height: 100%;
-            z-index: 5; touch-action: none; 
+            z-index: 5; 
+            /* Por padrão, não mostramos. O JS decide se deve mostrar. */
+            display: none;
+            touch-action: none; 
         }
 
         /* --- MIRA CENTRAL (Crosshair) --- */
@@ -73,17 +81,6 @@
             transform: translate(-50%, -50%); 
             z-index: 15;
             display: none; 
-        }
-
-        /* --- Visibilidade dos controles --- */
-        @media (max-width: 800px) {
-            #game-container.active .joystick { display: flex; }
-            #camera-area { display: block; } 
-            #jump-button { display: flex; } 
-        }
-        @media (min-width: 801px) {
-             .joystick, #jump-button { display: none !important; }
-             #camera-area { display: none; } 
         }
     </style>
 </head>
@@ -119,16 +116,11 @@
         const crosshair = document.getElementById('crosshair'); 
         
         let gameRunning = false;
-        
         let move = { x: 0, z: 0 }; 
         
-        // Controles de Seta e Pulo
+        // Controles de Seta e Pulo (Para Desktop)
         const keys = { 
-            up: false,    
-            down: false,  
-            left: false,  
-            right: false, 
-            space: false  
+            up: false, down: false, left: false, right: false, space: false  
         };
         
         let playerSpeed = 5.0; 
@@ -149,21 +141,47 @@
         const CAMERA_DISTANCE = 3; 
         const CAMERA_HEIGHT = 1.5; 
 
-        // URL da caixa (Para evitar o problema da sua URL .webp que estava dando erro)
+        // Texturas
         const PLAYER_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif'; 
         const GRASS_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif';
         const SOLID_GREEN_COLOR = 0x6AA84F; 
 
+        // --- DETECÇÃO DE DISPOSITIVO MÓVEL ---
+        function isMobileDevice() {
+            // Verifica se o User Agent contém termos comuns de dispositivos móveis
+            const toMatch = [
+                /Android/i,
+                /webOS/i,
+                /iPhone/i,
+                /iPad/i,
+                /iPod/i,
+                /BlackBerry/i,
+                /Windows Phone/i
+            ];
+            
+            return toMatch.some((toMatchItem) => {
+                return navigator.userAgent.match(toMatchItem);
+            });
+        }
+        
         // --- Funções de Menu e Estado ---
 
         function startGame() {
             mainMenu.style.display = 'none';
-            // Mostra os controles mobile/desktop
-            if (window.innerWidth <= 800) {
+            
+            // ** CORREÇÃO AQUI: Usa a detecção de dispositivo móvel universal **
+            if (isMobileDevice()) {
                  leftJoystick.style.display = 'flex';
                  jumpButton.style.display = 'flex';
-                 cameraArea.style.display = 'block';
+                 cameraArea.style.display = 'block'; // Área de rotação da câmera (toque)
+            } else {
+                 // Certifica-se de esconder os botões de toque no desktop, 
+                 // pois o controle é feito por setas e mouse.
+                 leftJoystick.style.display = 'none';
+                 jumpButton.style.display = 'none';
+                 cameraArea.style.display = 'none';
             }
+            
             crosshair.style.display = 'block'; 
             
             jumpButton.addEventListener('pointerdown', handleJumpButton, false);
@@ -188,10 +206,11 @@
              event.preventDefault(); 
         }
 
-        // --- Controle de Câmera por Toque (Mobile - Lado Direito) ---
+        // --- Controle de Câmera por Toque (Mobile) ---
         function handleTouchStart(event) {
             if (!gameRunning) return;
             isRotating = true;
+            // Usa o primeiro toque
             lastTouchX = event.touches[0].clientX;
             event.preventDefault(); 
         }
@@ -202,7 +221,6 @@
             const currentX = event.touches[0].clientX;
             const deltaX = currentX - lastTouchX;
             
-            // Rotação: Gira o boneco (que leva a câmera)
             playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
             
             lastTouchX = currentX;
@@ -258,7 +276,6 @@
             playerMesh.position.set(0, 0.8, 0); 
             scene.add(playerMesh);
 
-            // Carrega a textura da caixa (crate.gif)
             textureLoader.load(
                 PLAYER_TEXTURE_URL, 
                 texture => {
@@ -287,7 +304,8 @@
 
         // --- Rotação de Câmera/Jogador para Desktop (Mouse) ---
         function handleMouseMove(event) {
-            if (!gameRunning || window.innerWidth <= 800) return; 
+            // Apenas para não-mobile
+            if (!gameRunning || isMobileDevice()) return; 
             
             const deltaX = event.movementX || 0;
             playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
@@ -306,6 +324,9 @@
             const rotationAngle = playerMesh.rotation.y;
             
             // 1. COMBINAÇÃO DE INPUTS 
+            
+            // Se for mobile, o input será apenas do 'move' do joystick.
+            // Se for desktop, o input será apenas das 'keys' (setas).
             
             // Input Horizontal (Esquerda/Direita)
             let inputX = (keys.right ? 1 : 0) - (keys.left ? 1 : 0) + move.x;
@@ -327,21 +348,14 @@
                 inputZ = 0;
             }
 
-            // 2. ROTAÇÃO DO MOVIMENTO (CORREÇÃO FINAL DE INVERSÃO)
-            
-            // 'inputZ' positivo significa Mover para Frente.
-            // Para compensar a convenção do Three.js (-Z = Frente), invertemos inputZ.
+            // 2. ROTAÇÃO DO MOVIMENTO (CORREÇÃO DE INVERSÃO)
+            // Three.js: -Z é para frente. Invertemos inputZ.
             const forwardInput = -inputZ; 
             const sideInput = inputX;
 
-            // Transforma o movimento local (forward/side) em movimento mundial (dx/dz)
-            // Esta é a fórmula padrão de rotação.
+            // Aplica a Rotação
             dx = sideInput * Math.cos(rotationAngle) - forwardInput * Math.sin(rotationAngle);
             dz = sideInput * Math.sin(rotationAngle) + forwardInput * Math.cos(rotationAngle);
-            
-            // Se o movimento horizontal ainda estiver invertido, inverta sideInput:
-            // dx = -sideInput * Math.cos(rotationAngle) - forwardInput * Math.sin(rotationAngle);
-            // dz = -sideInput * Math.sin(rotationAngle) + forwardInput * Math.cos(rotationAngle);
             
             const speed = isNaN(playerSpeed) ? 5.0 : playerSpeed; 
             const safeDeltaTime = Math.min(deltaTime, 0.1); 
@@ -448,6 +462,7 @@
                 e.preventDefault(); 
                 active = true; 
                 stick.classList.add('active'); 
+                // Recalcula o centro na ativação para maior precisão
                 rect = stick.getBoundingClientRect(); 
                 center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
             }, false);
@@ -461,10 +476,16 @@
                 let dx = e.clientX - center.x;
                 let dy = e.clientY - center.y;
                 const mag = Math.sqrt(dx * dx + dy * dy);
-                if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
+                const maxRadius = 50; // Limita o movimento do stick
                 
-                // -dy/50 faz 'CIMA' (dy negativo) resultar em um valor positivo para 'frente' (inputZ)
-                callback({ x: dx / 50, z: -dy / 50 }); 
+                if (mag > maxRadius) { 
+                    dx = (dx / mag) * maxRadius; 
+                    dy = (dy / mag) * maxRadius; 
+                }
+                
+                // Mapeia o movimento. Divide por maxRadius para ter um valor entre -1 e 1.
+                // -dy inverte o eixo vertical da tela para o eixo Z 3D.
+                callback({ x: dx / maxRadius, z: -dy / maxRadius }); 
                 inner.style.transform = `translate(${dx}px, ${dy}px)`;
             }, false);
             
