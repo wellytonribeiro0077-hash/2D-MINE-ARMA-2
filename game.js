@@ -181,6 +181,7 @@ function init() {
     window.addEventListener('resize', onWindowResize);
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
+    // Inicializa o joystick e envia o movimento para a variável 'move'
     joystick("joystick-left", v => move = { x: v.x, z: v.y });
     
     document.addEventListener('mousemove', handleMouseMove, false);
@@ -226,6 +227,7 @@ function updatePlayer(deltaTime) {
 
     // 2. ROTAÇÃO DO MOVIMENTO (CORREÇÃO DE INVERSÃO)
     // Three.js: -Z é para frente. A inversão garante que 'inputZ' positivo vá para frente.
+    // Como a função joystick agora inverte o Y (z), o forwardInput faz o ajuste final.
     const forwardInput = -inputZ; 
     const sideInput = inputX;
 
@@ -356,9 +358,9 @@ function joystick(id, callback) {
             dy = (dy / mag) * maxRadius; 
         }
         
-        // CORREÇÃO APLICADA AQUI: Envia 'dy' (vertical) sem inversão
-        // para que a inversão seja tratada centralizadamente no updatePlayer.
-        callback({ x: dx / maxRadius, z: dy / maxRadius }); 
+        // CORREÇÃO FINAL: Inverte 'dy' aqui para que o input do joystick 
+        // siga a lógica de "Dedo para cima = Z Positivo"
+        callback({ x: dx / maxRadius, z: -dy / maxRadius }); 
         inner.style.transform = `translate(${dx}px, ${dy}px)`;
     }, false);
     
