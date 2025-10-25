@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Versão Final Estável)</title>
+    <title>Mini Standoff 2 3D (Versão Final c/ Analógico)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -44,7 +44,7 @@
             transform: scale(1.05);
         }
         
-        /* --- Estilos do Joystick de Movimento (Lado Esquerdo) --- */
+        /* --- Estilos do Joystick Analógico (Lado Esquerdo) --- */
         .joystick {
             position: absolute;
             bottom: 50px;
@@ -59,19 +59,17 @@
         
         #joystick-left { 
             left: 50px; 
-            /* URL DA IMAGEM DO USUÁRIO */
-            background-image: url('https://png.pngtree.com/png-clipart/20230806/original/pngtree-game-controller-button-game-graphics-game-asset-control-vector-picture-image_9947922.png'); 
-            background-size: cover;
-            background-position: center;
-            background-color: transparent;
-            border-radius: 0;
+            /* TRANSFORMA EM ANALÓGICO CIRCULAR */
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.4); 
+            background-image: none; /* Remove a imagem do D-pad */
         }
 
         .joystick-inner {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.7); /* O "thumbstick" branco */
             position: absolute;
         }
         
@@ -98,7 +96,7 @@
             border-radius: 50%;
             transform: translate(-50%, -50%); /* Centraliza perfeitamente */
             z-index: 15;
-            display: none; /* Esconder no menu inicial */
+            display: none; 
         }
 
         /* --- Display de Coordenadas (Acima da mira) --- */
@@ -106,7 +104,7 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -30px); /* Centraliza horizontalmente e move 30px para cima */
+            transform: translate(-50%, -30px); 
             padding: 5px 10px;
             background-color: rgba(0, 0, 0, 0.6);
             color: #00FF00; 
@@ -167,23 +165,18 @@
         
         const keys = { w: false, s: false, a: false, d: false };
         
-        // **AJUSTE DE VELOCIDADE FINAL:** Alto valor para compensar o deltaTime e garantir movimento visível
         let playerSpeed = 5.0; 
         let cameraRotationSpeed = 0.003; 
         const WORLD_BOUNDS = 10; 
 
-        // ESTABILIDADE: Inicializa a variável para garantir que o primeiro cálculo de deltaTime não seja NaN
         animate.lastTime = performance.now(); 
 
-        // Estado do toque na área de rotação
         let isRotating = false;
         let lastTouchX = 0;
 
-        // Parâmetros da Câmera em Terceira Pessoa
         const CAMERA_DISTANCE = 3; 
         const CAMERA_HEIGHT = 1.5; 
 
-        // Textura do Chão (Mantida)
         const GRASS_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif';
         const SOLID_GREEN_COLOR = 0x6AA84F; 
 
@@ -195,14 +188,12 @@
             coordsDisplay.style.display = 'block'; 
             crosshair.style.display = 'block'; 
             
-            // Reativação dos listeners para dispositivos móveis
             cameraArea.addEventListener('touchstart', handleTouchStart, false);
             cameraArea.addEventListener('touchmove', handleTouchMove, false);
             cameraArea.addEventListener('touchend', handleTouchEnd, false);
 
             gameRunning = true;
             animate(0); 
-            console.log("Jogo Iniciado!");
         }
         
         function showOptions() { alert("Opções: Funcionalidade a ser implementada!"); }
@@ -323,7 +314,11 @@
                 const rotationAngle = playerMesh.rotation.y;
                 
                 let inputX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + move.x;
-                let inputZ = (keys.s ? 1 : 0) - (keys.w ? 1 : 0) - move.z; 
+                
+                // **CORREÇÃO DA INVERSÃO:** Inverte a ordem das teclas W e S.
+                // Trocar (keys.s - keys.w) por (keys.w - keys.s). 
+                // move.z já está invertido na função joystick.
+                let inputZ = (keys.w ? 1 : 0) - (keys.s ? 1 : 0) + move.z; 
                 
                 // Reforço do Input (Garante que os valores não sejam Nan ou 0)
                 inputX = parseFloat(inputX) || 0;
@@ -454,13 +449,16 @@
             }, false);
             
             stick.addEventListener("pointermove", e => {
-                if (!gameRunning || !active) return;
+                if (!active) return;
                 e.preventDefault();
                 let dx = e.clientX - center.x;
                 let dy = e.clientY - center.y;
                 const mag = Math.sqrt(dx * dx + dy * dy);
                 if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
                 
+                // move.z: dy/50 é o valor do input Y. 
+                // Se puxar para CIMA (direção Z positiva no mundo 3D), dy é NEGATIVO (em pixels na tela)
+                // Usando -dy/50 faz o input ser POSITIVO para a direção positiva do eixo Z (frente).
                 callback({ x: dx / 50, z: -dy / 50 }); 
                 inner.style.transform = `translate(${dx}px, ${dy}px)`;
             }, false);
