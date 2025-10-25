@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Reforço Final Contra NaN)</title>
+    <title>Mini Standoff 2 3D (Velocidade Ajustada)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -167,8 +167,8 @@
         
         const keys = { w: false, s: false, a: false, d: false };
         
-        // Mantendo a velocidade em 0.02
-        let playerSpeed = 0.02; 
+        // CORREÇÃO FINAL: Aumenta a velocidade drasticamente para compensar o deltaTime
+        let playerSpeed = 5.0; 
         let cameraRotationSpeed = 0.003; 
         const WORLD_BOUNDS = 10; 
 
@@ -327,12 +327,11 @@
                 // Normaliza o vetor de movimento
                 const mag = Math.sqrt(inputX * inputX + inputZ * inputZ);
                 
-                // NOVO REFORÇO: Verifica se mag é um número válido antes de usá-lo
+                // Verificação de segurança contra NaN
                 if (mag > 0 && !isNaN(mag)) {
                     inputX /= mag;
                     inputZ /= mag;
                 } else {
-                    // Se mag for NaN ou 0, garante que o input de movimento seja 0 para evitar que dx/dz se torne NaN
                     inputX = 0;
                     inputZ = 0;
                 }
@@ -342,11 +341,11 @@
                 dz = inputX * Math.sin(rotationAngle) + inputZ * Math.cos(rotationAngle);
             }
             
-            // Calcula o novo movimento
-            // NOVO REFORÇO: Verifica se playerSpeed e deltaTime são números válidos
-            const speed = isNaN(playerSpeed) ? 0.02 : playerSpeed;
+            // CORREÇÃO AQUI: Garante que speed e deltaTime sejam números válidos
+            const speed = isNaN(playerSpeed) ? 5.0 : playerSpeed; // Usar o novo valor alto
             const safeDeltaTime = isNaN(deltaTime) || deltaTime === 0 ? (1/60) : deltaTime;
 
+            // Calcula o novo movimento
             const deltaX = dx * speed * safeDeltaTime;
             const deltaZ = dz * speed * safeDeltaTime;
 
