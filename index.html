@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Velocidade Ajustada)</title>
+    <title>Mini Standoff 2 3D (Versão Final Estável)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -167,7 +167,7 @@
         
         const keys = { w: false, s: false, a: false, d: false };
         
-        // CORREÇÃO FINAL: Aumenta a velocidade drasticamente para compensar o deltaTime
+        // **AJUSTE DE VELOCIDADE FINAL:** Alto valor para compensar o deltaTime e garantir movimento visível
         let playerSpeed = 5.0; 
         let cameraRotationSpeed = 0.003; 
         const WORLD_BOUNDS = 10; 
@@ -195,6 +195,7 @@
             coordsDisplay.style.display = 'block'; 
             crosshair.style.display = 'block'; 
             
+            // Reativação dos listeners para dispositivos móveis
             cameraArea.addEventListener('touchstart', handleTouchStart, false);
             cameraArea.addEventListener('touchmove', handleTouchMove, false);
             cameraArea.addEventListener('touchend', handleTouchEnd, false);
@@ -324,11 +325,15 @@
                 let inputX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + move.x;
                 let inputZ = (keys.s ? 1 : 0) - (keys.w ? 1 : 0) - move.z; 
                 
+                // Reforço do Input (Garante que os valores não sejam Nan ou 0)
+                inputX = parseFloat(inputX) || 0;
+                inputZ = parseFloat(inputZ) || 0;
+                
                 // Normaliza o vetor de movimento
                 const mag = Math.sqrt(inputX * inputX + inputZ * inputZ);
                 
-                // Verificação de segurança contra NaN
-                if (mag > 0 && !isNaN(mag)) {
+                // Verificação de segurança contra NaN e divisão por zero
+                if (mag > 0.001 && !isNaN(mag)) { 
                     inputX /= mag;
                     inputZ /= mag;
                 } else {
@@ -341,8 +346,8 @@
                 dz = inputX * Math.sin(rotationAngle) + inputZ * Math.cos(rotationAngle);
             }
             
-            // CORREÇÃO AQUI: Garante que speed e deltaTime sejam números válidos
-            const speed = isNaN(playerSpeed) ? 5.0 : playerSpeed; // Usar o novo valor alto
+            // Garante que speed e deltaTime sejam números válidos
+            const speed = isNaN(playerSpeed) ? 5.0 : playerSpeed; 
             const safeDeltaTime = isNaN(deltaTime) || deltaTime === 0 ? (1/60) : deltaTime;
 
             // Calcula o novo movimento
@@ -403,13 +408,16 @@
 
         function onKeyDown(e) {
             if (!gameRunning) return; 
-            if (e.key === 'w' || e.key === 'W') keys.w = true;
-            if (e.key === 's' || e.key === 'S') keys.s = true;
-            if (e.key === 'a' || e.key === 'A') keys.a = true;
-            if (e.key === 'd' || e.key === 'D') keys.d = true;
-            
-            if (e.key === 'ArrowLeft') playerMesh.rotation.y += 0.05;
-            if (e.key === 'ArrowRight') playerMesh.rotation.y -= 0.05;
+            // Garante que o foco esteja na janela do jogo para capturar as teclas
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                if (e.key === 'w' || e.key === 'W') keys.w = true;
+                if (e.key === 's' || e.key === 'S') keys.s = true;
+                if (e.key === 'a' || e.key === 'A') keys.a = true;
+                if (e.key === 'd' || e.key === 'D') keys.d = true;
+                
+                if (e.key === 'ArrowLeft') playerMesh.rotation.y += 0.05;
+                if (e.key === 'ArrowRight') playerMesh.rotation.y -= 0.05;
+            }
         }
         function onKeyUp(e) {
             if (!gameRunning) return; 
@@ -426,18 +434,17 @@
             let center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
             let active = false;
 
-            stick.addEventListener("touchstart", e => { 
+            // Usando 'pointer' events para melhor compatibilidade (mouse e toque)
+            stick.addEventListener("pointerdown", e => { 
                 if (!gameRunning) return;
                 e.preventDefault(); 
                 active = true; 
                 stick.classList.add('active'); 
-                if (e.touches.length > 0) {
-                     rect = stick.getBoundingClientRect(); 
-                     center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-                }
+                rect = stick.getBoundingClientRect(); 
+                center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
             }, false);
             
-            stick.addEventListener("touchend", e => { 
+            stick.addEventListener("pointerup", e => { 
                 if (!gameRunning) return;
                 e.preventDefault(); 
                 active = false; 
@@ -446,12 +453,11 @@
                 stick.classList.remove('active'); 
             }, false);
             
-            stick.addEventListener("touchmove", e => {
+            stick.addEventListener("pointermove", e => {
                 if (!gameRunning || !active) return;
                 e.preventDefault();
-                const touch = e.touches[0];
-                let dx = touch.clientX - center.x;
-                let dy = touch.clientY - center.y;
+                let dx = e.clientX - center.x;
+                let dy = e.clientY - center.y;
                 const mag = Math.sqrt(dx * dx + dy * dy);
                 if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
                 
