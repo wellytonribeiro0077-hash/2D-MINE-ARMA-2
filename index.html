@@ -2,97 +2,70 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Versão Final com Textura)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Standoff 2 Lite - Configuração de Controles</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        /* --- Estilos do Menu Principal --- */
+        /* --- Menu principal (Mantido) --- */
         #main-menu {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.8);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 20;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20;
         }
-
         .menu-button {
-            background-color: #fff;
-            color: #000;
-            border: none;
-            padding: 15px 50px;
-            margin: 15px 0;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 300px;
-            text-align: center;
-            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
-            transition: background-color 0.2s, color 0.2s, transform 0.1s;
+            background-color: #fff; color: #000; border: none; padding: 15px 50px; margin: 15px 0;
+            font-size: 24px; font-weight: bold; cursor: pointer; width: 300px; text-align: center;
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); transition: background-color 0.2s, transform 0.1s;
         }
+        .menu-button:hover { background-color: #FFD700; transform: scale(1.05); }
 
-        .menu-button:hover {
-            background-color: #FFD700;
-            color: #222;
-            transform: scale(1.05);
-        }
-        
-        /* --- Estilos do Joystick Analógico (Lado Esquerdo) --- */
+        /* --- Joystick Analógico (Lado Esquerdo) --- */
         .joystick {
-            position: absolute;
-            bottom: 50px;
-            width: 120px;
-            height: 120px;
-            touch-action: manipulation;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
+            position: absolute; bottom: 50px; width: 120px; height: 120px;
+            touch-action: manipulation; display: none; justify-content: center; align-items: center; z-index: 10;
         }
-        
         #joystick-left { 
             left: 50px; 
-            /* ANALÓGICO CIRCULAR COM A IMAGEM DO USUÁRIO */
             border-radius: 50%;
             background-image: url('https://www.pngwing.com/pt/free-png-nagxd'); 
             background-size: cover; 
             background-color: transparent; 
         }
-
         .joystick-inner {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.7); /* O "thumbstick" branco */
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7); 
             position: absolute;
         }
         
-        /* --- Área de Rotação da Câmera (Lado Direito da Tela) --- */
-        #camera-area {
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: 50%; 
-            height: 100%;
-            z-index: 5; 
-            touch-action: none; 
+        /* --- Botão de Pular (Jump) --- */
+        #jump-button {
+            position: absolute; bottom: 50px; right: 50px;
+            width: 80px; height: 80px; border-radius: 50%;
+            background-color: rgba(0, 150, 255, 0.6);
+            color: white; font-size: 20px; font-weight: bold;
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            display: none; justify-content: center; align-items: center;
+            touch-action: manipulation; z-index: 10;
+            cursor: pointer;
+        }
+        #jump-button:active {
+            background-color: rgba(0, 100, 200, 0.8);
+            transform: scale(0.95);
         }
 
-        /* --- MIRA CENTRAL (Crosshair) --- */
+        /* --- Área de Rotação da Câmera (Lado Direito) --- */
+        #camera-area {
+            position: absolute; right: 0; top: 0; width: 50%; height: 100%;
+            z-index: 5; touch-action: none; 
+        }
+
+        /* --- MIRA CENTRAL (Crosshair - Ponto de Mira) --- */
         #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 6px;
-            height: 6px;
-            background-color: black;
+            position: absolute; top: 50%; left: 50%; 
+            width: 4px; height: 4px; 
+            background-color: red; /* Cor clássica de mira */
             border: 1px solid white;
             border-radius: 50%;
             transform: translate(-50%, -50%); 
@@ -100,29 +73,13 @@
             display: none; 
         }
 
-        /* --- Display de Coordenadas (Acima da mira) --- */
-        #coords-display {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -30px); 
-            padding: 5px 10px;
-            background-color: rgba(0, 0, 0, 0.6);
-            color: #00FF00; 
-            font-size: 14px;
-            font-weight: bold;
-            border-radius: 3px;
-            z-index: 16; 
-            display: none; 
-        }
-
-
         @media (max-width: 800px) {
             #game-container.active .joystick { display: flex; }
             #camera-area { display: block; } 
+            #jump-button { display: flex; } /* Mostra o botão no mobile */
         }
         @media (min-width: 801px) {
-             .joystick { display: none !important; }
+             .joystick, #jump-button { display: none !important; }
              #camera-area { display: none; } 
         }
     </style>
@@ -139,12 +96,10 @@
 
     <div class="joystick" id="joystick-left"><div class="joystick-inner" id="left-inner"></div></div>
     
+    <div id="jump-button">PULAR</div>
+
     <div id="camera-area"></div> 
 
-    <div id="coords-display">
-        X: 0.00 | Y: 0.50 | Z: 0.00
-    </div>
-    
     <div id="crosshair"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -152,23 +107,29 @@
     <script>
         // --- Variáveis de Inicialização 3D ---
         let scene, camera, renderer;
-        let playerMesh, enemyMesh;
+        let playerMesh;
         const container = document.getElementById('game-container');
         const mainMenu = document.getElementById('main-menu');
         const leftJoystick = document.getElementById('joystick-left');
         const cameraArea = document.getElementById('camera-area');
-        const coordsDisplay = document.getElementById('coords-display'); 
+        const jumpButton = document.getElementById('jump-button');
         const crosshair = document.getElementById('crosshair'); 
         
         let gameRunning = false;
         
         let move = { x: 0, z: 0 };
         
-        const keys = { w: false, s: false, a: false, d: false };
+        const keys = { w: false, s: false, a: false, d: false, space: false };
         
         let playerSpeed = 5.0; 
         let cameraRotationSpeed = 0.003; 
         const WORLD_BOUNDS = 10; 
+        
+        // --- Variáveis de Física (Pulo) ---
+        let playerVelocityY = 0;
+        const GRAVITY = 9.8; 
+        const JUMP_POWER = 6.0;
+        let isOnGround = true;
 
         animate.lastTime = performance.now(); 
 
@@ -178,23 +139,25 @@
         const CAMERA_DISTANCE = 3; 
         const CAMERA_HEIGHT = 1.5; 
 
+        // Textura temporária (Personagem) - Para evitar falhas com links externos
+        const PLAYER_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif'; 
         const GRASS_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif';
         const SOLID_GREEN_COLOR = 0x6AA84F; 
-        
-        // **URL DO SEU PERSONAGEM**
-        // ATENÇÃO: O URL fornecido é de uma PÁGINA, não de uma IMAGEM.
-        // O Three.js precisa do link direto (ex: https://site.com/imagem.png).
-        // Substitua 'PLACEHOLDER_TEXTURE_URL' pelo link direto do seu PNG.
-        const PLACEHOLDER_TEXTURE_URL = 'https://threejs.org/examples/textures/crate.gif'; 
-
 
         // --- Funções de Menu e Estado ---
 
         function startGame() {
             mainMenu.style.display = 'none';
-            leftJoystick.style.display = 'flex';
-            coordsDisplay.style.display = 'block'; 
+            // Mostra os controles mobile/desktop
+            if (window.innerWidth <= 800) {
+                 leftJoystick.style.display = 'flex';
+                 jumpButton.style.display = 'flex';
+                 cameraArea.style.display = 'block';
+            }
             crosshair.style.display = 'block'; 
+            
+            // Adiciona listeners para o botão de pulo (mobile)
+            jumpButton.addEventListener('pointerdown', handleJumpButton, false);
             
             cameraArea.addEventListener('touchstart', handleTouchStart, false);
             cameraArea.addEventListener('touchmove', handleTouchMove, false);
@@ -204,11 +167,19 @@
             animate(0); 
         }
         
-        function showOptions() { alert("Opções: Funcionalidade a ser implementada!"); }
-        function exitGame() { alert("Sair: Voltando ao Menu Principal (simulação de saída)."); }
+        function showOptions() { alert("Configurações: Sensibilidade de Mira, Volume, etc."); }
+        function exitGame() { alert("Sair do jogo."); }
+
+        // --- Controle de Pulo ---
+        function handleJumpButton(event) {
+             if (gameRunning && isOnGround) {
+                playerVelocityY = JUMP_POWER;
+                isOnGround = false;
+             }
+             event.preventDefault(); 
+        }
 
         // --- Controle de Câmera por Toque (Lado Direito) ---
-
         function handleTouchStart(event) {
             if (!gameRunning) return;
             isRotating = true;
@@ -222,6 +193,7 @@
             const currentX = event.touches[0].clientX;
             const deltaX = currentX - lastTouchX;
             
+            // Rotaciona o boneco (que leva a câmera)
             playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
             
             lastTouchX = currentX;
@@ -256,65 +228,42 @@
 
             // 1. CHÃO
             const floorGeometry = new THREE.PlaneGeometry(20, 20);
-            let floorMaterial;
             const textureLoader = new THREE.TextureLoader();
-            textureLoader.load(GRASS_TEXTURE_URL,
-                function (texture) {
-                    texture.wrapS = THREE.RepeatWrapping;
-                    texture.wrapT = THREE.RepeatWrapping;
-                    texture.repeat.set(5, 5);
-                    const texturedMaterial = new THREE.MeshStandardMaterial({ map: texture, side: THREE.DoubleSide });
-                    floor.material = texturedMaterial;
-                },
-                undefined,
-                function (err) {
-                    console.error('Erro ao carregar a textura de grama. Usando cor verde sólida.', err);
-                    floor.material = new THREE.MeshStandardMaterial({ color: SOLID_GREEN_COLOR, side: THREE.DoubleSide });
-                }
-            );
-
-            floorMaterial = new THREE.MeshStandardMaterial({ color: SOLID_GREEN_COLOR, side: THREE.DoubleSide });
+            
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: SOLID_GREEN_COLOR, side: THREE.DoubleSide });
             const floor = new THREE.Mesh(floorGeometry, floorMaterial);
             floor.rotation.x = Math.PI / 2;
             scene.add(floor);
             
-            // 2. PERSONAGEM (Inicial - Cilindro Verde)
-            // Este é um mesh temporário. Ele será substituído pela Caixa com textura.
-            const initialPlayerGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.0, 32);
-            const initialPlayerMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-            playerMesh = new THREE.Mesh(initialPlayerGeometry, initialPlayerMaterial);
-            playerMesh.position.set(0, 0.5, 0);
+            textureLoader.load(GRASS_TEXTURE_URL, texture => {
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(5, 5);
+                floor.material = new THREE.MeshStandardMaterial({ map: texture, side: THREE.DoubleSide });
+            });
+
+
+            // 2. PERSONAGEM (Carrega a textura temporária)
+            const playerGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.8); // Altura: 1.6m
+            playerMesh = new THREE.Mesh(playerGeometry, new THREE.MeshStandardMaterial({ color: 0x00ff00 }));
+            playerMesh.position.set(0, 0.8, 0); // Altura inicial: 0.8 (metade da altura)
             scene.add(playerMesh);
 
-            // 3. TENTATIVA DE CARREGAR A TEXTURA DO PERSONAGEM (Assíncrono)
-            const loader = new THREE.TextureLoader();
-            loader.load(
-                PLACEHOLDER_TEXTURE_URL, 
-                function(texture) {
-                    // Cria uma geometria de caixa (Melhor para texturas de personagens)
-                    const newPlayerGeometry = new THREE.BoxGeometry(0.8, 1.6, 0.8);
-                    // Aplica a textura
-                    const newPlayerMaterial = new THREE.MeshStandardMaterial({ map: texture });
-                    
-                    // Remove o mesh temporário (o cilindro)
-                    scene.remove(playerMesh);
-
-                    // Cria o novo mesh com a textura
-                    playerMesh = new THREE.Mesh(newPlayerGeometry, newPlayerMaterial);
-                    playerMesh.position.set(0, 0.8, 0); // Ajusta a altura (metade de 1.6)
-                    scene.add(playerMesh);
+            textureLoader.load(
+                PLAYER_TEXTURE_URL, 
+                texture => {
+                    playerMesh.material = new THREE.MeshStandardMaterial({ map: texture });
                 },
                 undefined,
-                function(err) {
-                    console.error(`Falha ao carregar a textura do personagem. Usando cilindro verde padrão.`);
-                    // Em caso de falha, mantemos o cilindro verde inicial.
+                err => {
+                    console.warn(`[AVISO] Falha ao carregar a textura. Usando o cubo verde padrão.`);
                 }
             );
 
-            // 4. INIMIGO (Mantido)
+            // 3. INIMIGO (Mantido)
             const enemyGeometry = new THREE.BoxGeometry(1, 1, 1);
             const enemyMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-            enemyMesh = new THREE.Mesh(enemyGeometry, enemyMaterial);
+            const enemyMesh = new THREE.Mesh(enemyGeometry, enemyMaterial);
             enemyMesh.position.set(5, 0.5, -5);
             scene.add(enemyMesh);
 
@@ -330,13 +279,12 @@
         function handleMouseMove(event) {
             if (!gameRunning || window.innerWidth <= 800) return; 
             
-            if (event.buttons === 1) { 
-                 const deltaX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-                 playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
-            }
+            // Simula a rotação da câmera, como no FPS
+            const deltaX = event.movementX || 0;
+            playerMesh.rotation.y -= deltaX * cameraRotationSpeed; 
         }
 
-        // --- Funções de Jogo 3D (Update com controles estáveis e limites) ---
+        // --- Funções de Jogo 3D (Update com Controles Estáveis e Física) ---
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -346,71 +294,77 @@
 
         function updatePlayer(deltaTime) {
             let dx = 0, dz = 0;
-
-            if (keys.a || keys.d || keys.w || keys.s || move.x !== 0 || move.z !== 0) {
-                const rotationAngle = playerMesh.rotation.y;
-                
-                let inputX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + move.x;
-                
-                // CORREÇÃO DA INVERSÃO: W é para frente (eixo Z positivo), S é para trás (eixo Z negativo).
-                let inputZ = (keys.w ? 1 : 0) - (keys.s ? 1 : 0) + move.z; 
-                
-                // Reforço do Input
-                inputX = parseFloat(inputX) || 0;
-                inputZ = parseFloat(inputZ) || 0;
-                
-                // Normaliza o vetor de movimento
-                const mag = Math.sqrt(inputX * inputX + inputZ * inputZ);
-                
-                // Verificação de segurança contra NaN e divisão por zero
-                if (mag > 0.001 && !isNaN(mag)) { 
-                    inputX /= mag;
-                    inputZ /= mag;
-                } else {
-                    inputX = 0;
-                    inputZ = 0;
-                }
-
-                // Rotaciona o vetor de movimento para alinhar com a câmera (jogador)
-                dx = inputX * Math.cos(rotationAngle) - inputZ * Math.sin(rotationAngle);
-                dz = inputX * Math.sin(rotationAngle) + inputZ * Math.cos(rotationAngle);
-            }
+            const rotationAngle = playerMesh.rotation.y;
             
-            // Garante que speed e deltaTime sejam números válidos
+            // 1. COMBINAÇÃO DE INPUTS (Corrigida)
+            // O sinal do joystick move.z já está corrigido na função joystick (-dy)
+            let inputX = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + move.x;
+            let inputZ = (keys.w ? 1 : 0) - (keys.s ? 1 : 0) + move.z; 
+            
+            inputX = parseFloat(inputX) || 0;
+            inputZ = parseFloat(inputZ) || 0;
+            
+            // Normaliza o vetor de movimento (para que o movimento diagonal não seja mais rápido)
+            const mag = Math.sqrt(inputX * inputX + inputZ * inputZ);
+            
+            if (mag > 0.001 && !isNaN(mag)) { 
+                inputX /= mag;
+                inputZ /= mag;
+            } else {
+                inputX = 0;
+                inputZ = 0;
+            }
+
+            // 2. ROTAÇÃO DO MOVIMENTO
+            // Transforma o movimento local (inputX, inputZ) em movimento mundial (dx, dz)
+            dx = inputX * Math.cos(rotationAngle) - inputZ * Math.sin(rotationAngle);
+            dz = inputX * Math.sin(rotationAngle) + inputZ * Math.cos(rotationAngle);
+            
             const speed = isNaN(playerSpeed) ? 5.0 : playerSpeed; 
-            const safeDeltaTime = isNaN(deltaTime) || deltaTime === 0 ? (1/60) : deltaTime;
+            const safeDeltaTime = Math.min(deltaTime, 0.1); 
 
-            // Calcula o novo movimento
-            const deltaX = dx * speed * safeDeltaTime;
-            const deltaZ = dz * speed * safeDeltaTime;
+            // Aplica o movimento horizontal
+            playerMesh.position.x += dx * speed * safeDeltaTime;
+            playerMesh.position.z += dz * speed * safeDeltaTime;
 
-            // Aplica o movimento
-            playerMesh.position.x += deltaX;
-            playerMesh.position.z += deltaZ;
+            // 3. FÍSICA (Gravidade e Pulo)
+            
+            // Pulo (Teclado)
+            if (keys.space && isOnGround) {
+                playerVelocityY = JUMP_POWER;
+                isOnGround = false;
+            }
+
+            // Aplica Gravidade
+            if (!isOnGround) {
+                playerVelocityY -= GRAVITY * safeDeltaTime;
+                playerMesh.position.y += playerVelocityY * safeDeltaTime;
+            }
+
+            // Colisão com o Chão (Y=0.8 é a posição de repouso da caixa de 1.6m de altura)
+            const groundLevel = 0.8;
+            if (playerMesh.position.y < groundLevel) {
+                playerVelocityY = 0;
+                playerMesh.position.y = groundLevel;
+                isOnGround = true;
+            }
 
             // Limites de Tela (Boundaries)
             playerMesh.position.x = Math.min(Math.max(playerMesh.position.x, -WORLD_BOUNDS), WORLD_BOUNDS);
             playerMesh.position.z = Math.min(Math.max(playerMesh.position.z, -WORLD_BOUNDS), WORLD_BOUNDS);
             
-            // Lógica da Câmera em Terceira Pessoa 
-            const angle = playerMesh.rotation.y;
-            const targetX = playerMesh.position.x - Math.sin(angle) * CAMERA_DISTANCE;
-            const targetZ = playerMesh.position.z - Math.cos(angle) * CAMERA_DISTANCE;
+            // 4. LÓGICA DA CÂMERA
+            const targetX = playerMesh.position.x - Math.sin(rotationAngle) * CAMERA_DISTANCE;
+            const targetZ = playerMesh.position.z - Math.cos(rotationAngle) * CAMERA_DISTANCE;
             
             const smoothingFactor = 0.5; 
             
-            // Movimento suave da câmera
             camera.position.x += (targetX - camera.position.x) * smoothingFactor;
             camera.position.z += (targetZ - camera.position.z) * smoothingFactor;
-            // Mantém a câmera acima do centro do mesh (playerMesh.position.y) + altura da câmera
-            camera.position.y = playerMesh.position.y + (playerMesh.geometry.parameters.height / 2) + CAMERA_HEIGHT; 
+            camera.position.y = playerMesh.position.y + CAMERA_HEIGHT; 
 
-            // A câmera sempre olha para o jogador
+            // A câmera sempre olha para a frente do jogador
             camera.lookAt(playerMesh.position.x, playerMesh.position.y + 0.5, playerMesh.position.z);
-
-            // Atualiza o Display de Coordenadas
-            coordsDisplay.textContent = 
-                `X: ${playerMesh.position.x.toFixed(2)} | Y: ${playerMesh.position.y.toFixed(2)} | Z: ${playerMesh.position.z.toFixed(2)}`;
         }
 
         function animate(time) {
@@ -420,16 +374,12 @@
 
             const currentTime = performance.now();
             const lastTime = animate.lastTime || currentTime; 
-            
-            // DeltaTime em segundos (para estabilidade e consistência do FPS)
             const deltaTime = (currentTime - lastTime) / 1000; 
             
             animate.lastTime = currentTime;
             
-            // Limita o deltaTime para evitar saltos (teletransporte)
             const clampedDeltaTime = Math.min(deltaTime, 0.1);
 
-            // Chamada da função de atualização com o deltaTime seguro
             updatePlayer(clampedDeltaTime);
 
             renderer.render(scene, camera);
@@ -445,8 +395,8 @@
                 if (e.key === 'a' || e.key === 'A') keys.a = true;
                 if (e.key === 'd' || e.key === 'D') keys.d = true;
                 
-                if (e.key === 'ArrowLeft') playerMesh.rotation.y += 0.05;
-                if (e.key === 'ArrowRight') playerMesh.rotation.y -= 0.05;
+                // Tecla de Pulo (Espaço)
+                if (e.key === ' ' || e.key === 'Spacebar') keys.space = true;
             }
         }
         function onKeyUp(e) {
@@ -455,6 +405,8 @@
             if (e.key === 's' || e.key === 'S') keys.s = false;
             if (e.key === 'a' || e.key === 'A') keys.a = false;
             if (e.key === 'd' || e.key === 'D') keys.d = false;
+            
+            if (e.key === ' ' || e.key === 'Spacebar') keys.space = false;
         }
 
         function joystick(id, callback) {
@@ -464,6 +416,14 @@
             let center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
             let active = false;
 
+            // Função para resetar o joystick
+            const resetStick = () => {
+                active = false; 
+                callback({ x: 0, z: 0 }); 
+                inner.style.transform = `translate(0px, 0px)`; 
+                stick.classList.remove('active'); 
+            };
+            
             stick.addEventListener("pointerdown", e => { 
                 if (!gameRunning) return;
                 e.preventDefault(); 
@@ -473,14 +433,8 @@
                 center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
             }, false);
             
-            stick.addEventListener("pointerup", e => { 
-                if (!gameRunning) return;
-                e.preventDefault(); 
-                active = false; 
-                callback({ x: 0, z: 0 }); 
-                inner.style.transform = `translate(0px, 0px)`; 
-                stick.classList.remove('active'); 
-            }, false);
+            stick.addEventListener("pointerup", resetStick, false);
+            stick.addEventListener("pointerleave", resetStick, false); 
             
             stick.addEventListener("pointermove", e => {
                 if (!active) return;
@@ -490,6 +444,8 @@
                 const mag = Math.sqrt(dx * dx + dy * dy);
                 if (mag > 50) { dx = (dx / mag) * 50; dy = (dy / mag) * 50; }
                 
+                // move.x: Deslocamento horizontal (eixo X no 3D)
+                // move.z: Deslocamento vertical. -dy/50 faz 'CIMA' (dy negativo na tela) ser 'FRENTE' (Z positivo ou negativo, dependendo da convenção, mas consistente com W/S).
                 callback({ x: dx / 50, z: -dy / 50 }); 
                 inner.style.transform = `translate(${dx}px, ${dy}px)`;
             }, false);
