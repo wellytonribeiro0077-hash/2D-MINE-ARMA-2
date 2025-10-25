@@ -358,9 +358,10 @@ function joystick(id, callback) {
             dy = (dy / mag) * maxRadius; 
         }
         
-        // CORREÇÃO FINAL: Inverte 'dy' para mapear corretamente o movimento da tela (Y)
-        // para o eixo Z (profundidade) do jogo.
-        callback({ x: dx / maxRadius, z: -dy / maxRadius }); 
+        // CORREÇÃO FINAL DOS EIXOS: Troca X e Z.
+        // X (lateral) recebe o valor vertical invertido (-dy)
+        // Z (frente/trás) recebe o valor horizontal (dx)
+        callback({ x: -dy / maxRadius, z: dx / maxRadius }); 
         inner.style.transform = `translate(${dx}px, ${dy}px)`;
     }, false);
     
