@@ -57,13 +57,12 @@ function isMobileDevice() {
 function startGame() {
     mainMenu.style.display = 'none';
     
-    // LÓGICA DE VISIBILIDADE DOS BOTÕES (CORRIGIDA)
+    // LÓGICA DE VISIBILIDADE DOS BOTÕES
     if (isMobileDevice()) {
-         leftJoystick.style.display = 'flex'; // Joystick de MOVIMENTO
-         jumpButton.style.display = 'flex';   // Botão PULAR
-         cameraArea.style.display = 'block';  // Área de rotação da câmera (toque)
+         leftJoystick.style.display = 'flex'; 
+         jumpButton.style.display = 'flex';   
+         cameraArea.style.display = 'block';  
     } else {
-         // Desktop: Esconde botões de toque
          leftJoystick.style.display = 'none';
          jumpButton.style.display = 'none';
          cameraArea.style.display = 'none';
@@ -71,7 +70,6 @@ function startGame() {
     
     crosshair.style.display = 'block'; 
     
-    // Adiciona Listeners
     jumpButton.addEventListener('pointerdown', handleJumpButton, false);
     cameraArea.addEventListener('touchstart', handleTouchStart, false);
     cameraArea.addEventListener('touchmove', handleTouchMove, false);
@@ -210,16 +208,12 @@ function updatePlayer(deltaTime) {
     
     // 1. COMBINAÇÃO DE INPUTS 
     
-    // Input Horizontal (Setas + Joystick X)
     let inputX = (keys.right ? 1 : 0) - (keys.left ? 1 : 0) + move.x;
-    
-    // Input Vertical (Setas + Joystick Z)
     let inputZ = (keys.up ? 1 : 0) - (keys.down ? 1 : 0) + move.z; 
     
     inputX = parseFloat(inputX) || 0;
     inputZ = parseFloat(inputZ) || 0;
     
-    // Normaliza o vetor de movimento
     const mag = Math.sqrt(inputX * inputX + inputZ * inputZ);
     
     if (mag > 0.001 && !isNaN(mag)) { 
@@ -230,7 +224,8 @@ function updatePlayer(deltaTime) {
         inputZ = 0;
     }
 
-    // 2. ROTAÇÃO DO MOVIMENTO (MOVIMENTO CORRIGIDO)
+    // 2. ROTAÇÃO DO MOVIMENTO (CORREÇÃO DE INVERSÃO)
+    // Three.js: -Z é para frente. A inversão garante que 'inputZ' positivo vá para frente.
     const forwardInput = -inputZ; 
     const sideInput = inputX;
 
@@ -276,7 +271,6 @@ function updatePlayer(deltaTime) {
     camera.position.z += (targetZ - camera.position.z) * smoothingFactor;
     camera.position.y = playerMesh.position.y + CAMERA_HEIGHT; 
 
-    // A câmera sempre olha para a frente do jogador
     camera.lookAt(playerMesh.position.x, playerMesh.position.y + 0.5, playerMesh.position.z);
 }
 
@@ -362,8 +356,9 @@ function joystick(id, callback) {
             dy = (dy / mag) * maxRadius; 
         }
         
-        // Z (Frente/Trás) é o eixo Y da tela, invertido (-dy/maxRadius)
-        callback({ x: dx / maxRadius, z: -dy / maxRadius }); 
+        // CORREÇÃO APLICADA AQUI: Envia 'dy' (vertical) sem inversão
+        // para que a inversão seja tratada centralizadamente no updatePlayer.
+        callback({ x: dx / maxRadius, z: dy / maxRadius }); 
         inner.style.transform = `translate(${dx}px, ${dy}px)`;
     }, false);
     
@@ -373,5 +368,4 @@ function joystick(id, callback) {
     });
 }
 
-// Inicia o ambiente 3D quando a página carrega
 init();
