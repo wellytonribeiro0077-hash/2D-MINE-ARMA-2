@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Standoff 2 3D (Mira Central e Coordenadas)</title>
+    <title>Mini Standoff 2 3D (Correção Final do NaN)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
         #game-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -101,7 +101,7 @@
             display: none; /* Esconder no menu inicial */
         }
 
-        /* --- Display de Coordenadas (Agora acima da mira) --- */
+        /* --- Display de Coordenadas (Acima da mira) --- */
         #coords-display {
             position: absolute;
             top: 50%;
@@ -113,7 +113,7 @@
             font-size: 14px;
             font-weight: bold;
             border-radius: 3px;
-            z-index: 16; /* Acima da mira */
+            z-index: 16; 
             display: none; 
         }
 
@@ -159,7 +159,7 @@
         const leftJoystick = document.getElementById('joystick-left');
         const cameraArea = document.getElementById('camera-area');
         const coordsDisplay = document.getElementById('coords-display'); 
-        const crosshair = document.getElementById('crosshair'); // Referência ao novo elemento
+        const crosshair = document.getElementById('crosshair'); 
         
         let gameRunning = false;
         
@@ -167,9 +167,13 @@
         
         const keys = { w: false, s: false, a: false, d: false };
         
-        let playerSpeed = 0.01; 
+        // Ajuste de velocidade (um pouco mais que 0.01)
+        let playerSpeed = 0.02; 
         let cameraRotationSpeed = 0.003; 
         const WORLD_BOUNDS = 10; 
+
+        // ESTABILIDADE: Inicializa a variável para garantir que o primeiro cálculo de deltaTime não seja NaN
+        animate.lastTime = performance.now(); 
 
         // Estado do toque na área de rotação
         let isRotating = false;
@@ -189,7 +193,7 @@
             mainMenu.style.display = 'none';
             leftJoystick.style.display = 'flex';
             coordsDisplay.style.display = 'block'; 
-            crosshair.style.display = 'block'; // Mostrar a mira ao iniciar
+            crosshair.style.display = 'block'; 
             
             cameraArea.addEventListener('touchstart', handleTouchStart, false);
             cameraArea.addEventListener('touchmove', handleTouchMove, false);
@@ -369,15 +373,27 @@
 
             requestAnimationFrame(animate);
 
-            // DeltaTime em segundos (para estabilidade e consistência do FPS)
+            // CORREÇÃO: Usa performance.now() para calcular o tempo atual
             const currentTime = performance.now();
-            const deltaTime = (currentTime - (animate.lastTime || currentTime)) / 1000; 
+            
+            // Garante que lastTime esteja definido para evitar NaN
+            const lastTime = animate.lastTime || currentTime; 
+            
+            // DeltaTime em segundos (para estabilidade e consistência do FPS)
+            const deltaTime = (currentTime - lastTime) / 1000; 
+            
+            // Atualiza o lastTime
             animate.lastTime = currentTime;
             
             // Limita o deltaTime para evitar saltos (teletransporte)
             const clampedDeltaTime = Math.min(deltaTime, 0.1);
 
-            updatePlayer(clampedDeltaTime);
+            // Se o deltaTime for 0 ou NaN por algum motivo, forçamos um valor seguro
+            if (isNaN(clampedDeltaTime) || clampedDeltaTime === 0) {
+                 updatePlayer(1/60); // Assume 60 FPS se houver problema
+            } else {
+                 updatePlayer(clampedDeltaTime);
+            }
 
             renderer.render(scene, camera);
         }
@@ -451,4 +467,4 @@
         init();
     </script>
 </body>
-    </html>
+</html>
